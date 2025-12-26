@@ -1,0 +1,12 @@
+{
+    "mcpServers": {
+        "laravel-boost": {
+            "command": "wsl.exe",
+            "args": [
+                "/usr/bin/php",
+                "/home/shiroko/code/laravel/qr-system/artisan",
+                "boost:mcp"
+            ]
+        }
+    }
+}
