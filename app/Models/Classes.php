@@ -5,12 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Classes extends Model
 {
     protected $fillable = [
         'grade',
         'label',
+        'major_id',
     ];
 
     public function students(): HasMany
@@ -26,5 +28,10 @@ class Classes extends Model
     public function homeroomTeacher(): HasOne
     {
         return $this->hasOne(TeacherProfile::class, 'homeroom_class_id');
+    }
+
+    public function major(): BelongsTo
+    {
+        return $this->belongsTo(Major::class, 'major_id');
     }
 }

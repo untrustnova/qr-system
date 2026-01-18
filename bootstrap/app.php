@@ -15,6 +15,8 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'role' => \App\Http\Middleware\EnsureUserType::class,
+            'admin-type' => \App\Http\Middleware\EnsureAdminType::class,
+            'class-officer' => \App\Http\Middleware\EnsureClassOfficer::class,
             'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         ]);
     })

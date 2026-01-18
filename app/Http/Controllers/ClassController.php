@@ -10,7 +10,7 @@ class ClassController extends Controller
 {
     public function index(): JsonResponse
     {
-        return response()->json(Classes::query()->latest()->get());
+        return response()->json(Classes::query()->with('major')->latest()->get());
     }
 
     public function store(Request $request): JsonResponse
@@ -18,6 +18,7 @@ class ClassController extends Controller
         $data = $request->validate([
             'grade' => ['required', 'string', 'max:10'],
             'label' => ['required', 'string', 'max:20'],
+            'major_id' => ['nullable', 'exists:majors,id'],
         ]);
 
         $class = Classes::create($data);
@@ -27,7 +28,7 @@ class ClassController extends Controller
 
     public function show(Classes $class): JsonResponse
     {
-        return response()->json($class->load(['students', 'homeroomTeacher']));
+        return response()->json($class->load(['students', 'homeroomTeacher', 'major']));
     }
 
     public function update(Request $request, Classes $class): JsonResponse
@@ -35,6 +36,7 @@ class ClassController extends Controller
         $data = $request->validate([
             'grade' => ['sometimes', 'string', 'max:10'],
             'label' => ['sometimes', 'string', 'max:20'],
+            'major_id' => ['nullable', 'exists:majors,id'],
         ]);
 
         $class->update($data);

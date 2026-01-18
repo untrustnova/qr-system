@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>QR System API Docs</title>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+        }
+        body {
+            font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+            background: #f4f6f8;
+        }
+        #api-reference {
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div id="api-reference"></div>
+    <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+    <script>
+        const reference = document.getElementById('api-reference');
+        Scalar.createApiReference(reference, {
+            url: '/docs/openapi.json',
+            theme: 'kepler'
+        });
+    </script>
+</body>
+</html>

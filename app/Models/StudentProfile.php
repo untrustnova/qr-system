@@ -15,6 +15,11 @@ class StudentProfile extends Model
         'gender',
         'address',
         'class_id',
+        'is_class_officer',
+    ];
+
+    protected $casts = [
+        'is_class_officer' => 'boolean',
     ];
 
     public function user(): BelongsTo
@@ -30,5 +35,10 @@ class StudentProfile extends Model
     public function attendances(): HasMany
     {
         return $this->hasMany(Attendance::class, 'student_id');
+    }
+
+    public function absenceRequests(): HasMany
+    {
+        return $this->hasMany(AbsenceRequest::class, 'student_id');
     }
 }

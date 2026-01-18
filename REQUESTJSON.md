@@ -35,7 +35,18 @@ Use `{BASE_URL}` for your host (e.g., `http://localhost:8000`). All endpoints ar
 ```json
 {
   "grade": "10",
-  "label": "10-A"
+  "label": "10-A",
+  "major_id": 1
+}
+```
+
+## Majors (Jurusan)
+`{BASE_URL}/api/majors`
+```json
+{
+  "code": "RPL",
+  "name": "Rekayasa Perangkat Lunak",
+  "category": "Teknologi Informasi"
 }
 ```
 
@@ -112,12 +123,60 @@ Use `{BASE_URL}` for your host (e.g., `http://localhost:8000`). All endpoints ar
   "day": "Monday",
   "start_time": "07:30",
   "end_time": "09:00",
-  "title": "Matematika",
+  "subject_name": "Matematika",
   "teacher_id": 1,
   "class_id": 1,
   "room": "R-101",
   "semester": 1,
   "year": 2026
+}
+```
+
+## WhatsApp
+`{BASE_URL}/api/wa/send-text`
+```json
+{
+  "to": "6281234567890",
+  "message": "Pesan WA"
+}
+```
+
+`{BASE_URL}/api/wa/send-media`
+```json
+{
+  "to": "6281234567890",
+  "mediaBase64": "base64data",
+  "filename": "surat-izin.jpg",
+  "caption": "Lampiran surat izin"
+}
+```
+
+`{BASE_URL}/api/classes/{class_id}/schedules/bulk`
+```json
+{
+  "day": "Senin",
+  "semester": 1,
+  "year": 2026,
+  "items": [
+    {
+      "subject_name": "Matematika",
+      "teacher_id": 1,
+      "start_time": "07:00",
+      "end_time": "09:40"
+    }
+  ]
+}
+```
+
+## Absence Requests (Dispensasi / Izin Sakit)
+`{BASE_URL}/api/absence-requests`
+```json
+{
+  "student_id": 12,
+  "type": "sick",
+  "start_date": "2026-01-10",
+  "end_date": "2026-01-12",
+  "reason": "Surat dokter"
 }
 ```
 

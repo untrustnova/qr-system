@@ -43,6 +43,22 @@ class QrCodeController extends Controller
                 abort(403, 'Guru tidak boleh membuat QR untuk jadwal lain');
             }
         }
+
+        if ($user->user_type === 'student') {
+            $studentProfile = $user->studentProfile;
+
+            if (!$studentProfile || !$studentProfile->is_class_officer) {
+                abort(403, 'Pengurus kelas saja yang boleh membuat QR');
+            }
+
+            if ($schedule->class_id !== $studentProfile->class_id) {
+                abort(403, 'Pengurus kelas hanya boleh membuat QR untuk kelasnya');
+            }
+
+            if ($data['type'] !== 'student') {
+                abort(422, 'Pengurus kelas hanya boleh membuat QR siswa');
+            }
+        }
         $expiresAt = now()->addMinutes($data['expires_in_minutes'] ?? 15);
 
         $qr = Qrcode::create([
@@ -86,6 +102,18 @@ class QrCodeController extends Controller
 
             if (!$isOwner && !$isHomeroom) {
                 abort(403, 'Guru tidak boleh mencabut QR ini');
+            }
+        }
+
+        if ($request->user()->user_type === 'student') {
+            $studentProfile = $request->user()->studentProfile;
+
+            if (!$studentProfile || !$studentProfile->is_class_officer) {
+                abort(403, 'Pengurus kelas saja yang boleh mencabut QR');
+            }
+
+            if ($qr->schedule?->class_id !== $studentProfile->class_id) {
+                abort(403, 'Pengurus kelas hanya boleh mencabut QR kelasnya');
             }
         }
 

@@ -34,6 +34,10 @@ class AuthController extends Controller
             ]);
         }
 
+        if ($user->user_type === 'admin' && !$user->adminProfile) {
+            $user->adminProfile()->create(['type' => 'waka']);
+        }
+
         $token = $user->createToken('api')->plainTextToken;
 
         return response()->json([

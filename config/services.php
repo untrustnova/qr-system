@@ -35,4 +35,10 @@ return [
         ],
     ],
 
+    'whatsapp' => [
+        'base_url' => env('WHATSAPP_API_BASE_URL'),
+        'token' => env('WHATSAPP_API_TOKEN'),
+        'timeout' => env('WHATSAPP_API_TIMEOUT', 10),
+    ],
+
 ];

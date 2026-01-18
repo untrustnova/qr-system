@@ -1,0 +1,167 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "QR System API",
+    "version": "1.0.0",
+    "description": "API documentation for QR System backend."
+  },
+  "servers": [
+    {"url": "/api"}
+  ],
+  "paths": {
+    "/majors": {
+      "get": {"summary": "List majors", "responses": {"200": {"description": "OK"}}},
+      "post": {
+        "summary": "Create major",
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Major"}}}
+        },
+        "responses": {"201": {"description": "Created"}}
+      }
+    },
+    "/classes": {
+      "get": {"summary": "List classes", "responses": {"200": {"description": "OK"}}},
+      "post": {
+        "summary": "Create class",
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Class"}}}
+        },
+        "responses": {"201": {"description": "Created"}}
+      }
+    },
+    "/classes/{class}/schedules/bulk": {
+      "post": {
+        "summary": "Bulk upsert schedules per day",
+        "parameters": [
+          {"name": "class", "in": "path", "required": true, "schema": {"type": "integer"}}
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/ScheduleBulk"}}}
+        },
+        "responses": {"200": {"description": "OK"}}
+      }
+    },
+    "/absence-requests": {
+      "get": {"summary": "List absence requests", "responses": {"200": {"description": "OK"}}},
+      "post": {
+        "summary": "Create absence request",
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AbsenceRequestCreate"}}}
+        },
+        "responses": {"201": {"description": "Created"}}
+      }
+    },
+    "/absence-requests/{absenceRequest}/approve": {
+      "post": {
+        "summary": "Approve absence request",
+        "parameters": [
+          {"name": "absenceRequest", "in": "path", "required": true, "schema": {"type": "integer"}}
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AbsenceRequestApproval"}}}
+        },
+        "responses": {"200": {"description": "OK"}}
+      }
+    },
+    "/absence-requests/{absenceRequest}/reject": {
+      "post": {
+        "summary": "Reject absence request",
+        "parameters": [
+          {"name": "absenceRequest", "in": "path", "required": true, "schema": {"type": "integer"}}
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/AbsenceRequestApproval"}}}
+        },
+        "responses": {"200": {"description": "OK"}}
+      }
+    },
+    "/qrcodes/generate": {
+      "post": {
+        "summary": "Generate QR",
+        "requestBody": {
+          "required": true,
+          "content": {"application/json": {"schema": {"$ref": "#/components/schemas/QrGenerate"}}}
+        },
+        "responses": {"201": {"description": "Created"}}
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Major": {
+        "type": "object",
+        "required": ["code", "name"],
+        "properties": {
+          "code": {"type": "string", "example": "RPL"},
+          "name": {"type": "string", "example": "Rekayasa Perangkat Lunak"},
+          "category": {"type": "string", "example": "Teknologi Informasi"}
+        }
+      },
+      "Class": {
+        "type": "object",
+        "required": ["grade", "label"],
+        "properties": {
+          "grade": {"type": "string", "example": "X"},
+          "label": {"type": "string", "example": "RPL 1"},
+          "major_id": {"type": "integer", "example": 1}
+        }
+      },
+      "ScheduleBulk": {
+        "type": "object",
+        "required": ["day", "semester", "year", "items"],
+        "properties": {
+          "day": {"type": "string", "example": "Senin"},
+          "semester": {"type": "integer", "example": 1},
+          "year": {"type": "integer", "example": 2025},
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["teacher_id", "start_time", "end_time"],
+              "properties": {
+                "subject_name": {"type": "string", "example": "Matematika"},
+                "subject_id": {"type": "integer", "example": 1},
+                "teacher_id": {"type": "integer", "example": 12},
+                "start_time": {"type": "string", "example": "07:00"},
+                "end_time": {"type": "string", "example": "09:40"},
+                "room": {"type": "string", "example": "R-101"}
+              }
+            }
+          }
+        }
+      },
+      "AbsenceRequestCreate": {
+        "type": "object",
+        "required": ["student_id", "type", "start_date", "end_date"],
+        "properties": {
+          "student_id": {"type": "integer", "example": 1},
+          "type": {"type": "string", "example": "sick"},
+          "start_date": {"type": "string", "example": "2025-01-10"},
+          "end_date": {"type": "string", "example": "2025-01-12"},
+          "reason": {"type": "string", "example": "Surat dokter"}
+        }
+      },
+      "AbsenceRequestApproval": {
+        "type": "object",
+        "properties": {
+          "approver_signature": {"type": "string", "example": "data:image/png;base64,..."}
+        }
+      },
+      "QrGenerate": {
+        "type": "object",
+        "required": ["schedule_id", "type"],
+        "properties": {
+          "schedule_id": {"type": "integer", "example": 1},
+          "type": {"type": "string", "example": "student"},
+          "expires_in_minutes": {"type": "integer", "example": 15}
+        }
+      }
+    }
+  }
+}

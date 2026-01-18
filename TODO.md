@@ -31,9 +31,25 @@
 ## Authorization
 - [x] Guru hanya akses jadwal/rekap miliknya (kelas/homeroom check)
 
+## Waka & Pengurus Kelas
+- [x] Otomatisasi admin profile untuk Waka saat login
+- [x] Validasi akses Waka untuk kelola jadwal bulk dan approve izin
+- [x] Validasi pengurus kelas untuk generate/revoke QR siswa
+
+## Dispensasi & Izin
+- [x] Pengajuan dispensasi/izin sakit oleh guru/wali/pengurus kelas
+- [x] Persetujuan Waka + tanda tangan (signature)
+
+## Jurusan
+- [x] Master jurusan (kode + kategori)
+- [x] Relasi jurusan pada kelas
+
+## API Docs
+- [x] Scalar docs `/docs` + OpenAPI JSON
+
 
 ## Another List
-- [] /api/wa/send-text { to, message }
-- [] /api/wa/send-media { to, mediaBase64, filename, caption }
+- [x] /api/wa/send-text { to, message }
+- [x] /api/wa/send-media { to, mediaBase64, filename, caption }
 
 ## plis aku capek ditimpa banyak project aduhai backend cuma 1 apa coba ini

@@ -31,6 +31,7 @@ class StudentController extends Controller
             'items.*.gender' => ['required', 'in:L,P'],
             'items.*.address' => ['required', 'string'],
             'items.*.class_id' => ['required', 'exists:classes,id'],
+            'items.*.is_class_officer' => ['nullable', 'boolean'],
             'items.*.phone' => ['nullable', 'string', 'max:30'],
             'items.*.contact' => ['nullable', 'string', 'max:50'],
         ]);
@@ -55,6 +56,7 @@ class StudentController extends Controller
                     'gender' => $item['gender'],
                     'address' => $item['address'],
                     'class_id' => $item['class_id'],
+                    'is_class_officer' => $item['is_class_officer'] ?? false,
                 ]));
             }
         });
@@ -77,6 +79,7 @@ class StudentController extends Controller
             'gender' => ['required', 'in:L,P'],
             'address' => ['required', 'string'],
             'class_id' => ['required', 'exists:classes,id'],
+            'is_class_officer' => ['nullable', 'boolean'],
             'phone' => ['nullable', 'string', 'max:30'],
             'contact' => ['nullable', 'string', 'max:50'],
         ]);
@@ -98,6 +101,7 @@ class StudentController extends Controller
                 'gender' => $data['gender'],
                 'address' => $data['address'],
                 'class_id' => $data['class_id'],
+                'is_class_officer' => $data['is_class_officer'] ?? false,
             ]);
         });
 
@@ -118,6 +122,7 @@ class StudentController extends Controller
             'gender' => ['sometimes', 'in:L,P'],
             'address' => ['sometimes', 'string'],
             'class_id' => ['sometimes', 'exists:classes,id'],
+            'is_class_officer' => ['nullable', 'boolean'],
             'phone' => ['nullable', 'string', 'max:30'],
             'contact' => ['nullable', 'string', 'max:50'],
         ]);
@@ -137,6 +142,7 @@ class StudentController extends Controller
                 'gender' => $data['gender'] ?? $student->gender,
                 'address' => $data['address'] ?? $student->address,
                 'class_id' => $data['class_id'] ?? $student->class_id,
+                'is_class_officer' => $data['is_class_officer'] ?? $student->is_class_officer,
             ]);
         });
 
