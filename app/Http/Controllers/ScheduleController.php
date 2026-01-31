@@ -6,6 +6,7 @@ use App\Events\SchedulesBulkUpdated;
 use App\Models\Classes;
 use App\Models\Schedule;
 use App\Models\Subject;
+use App\Models\TeacherProfile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -33,6 +34,80 @@ class ScheduleController extends Controller
         }
 
         return response()->json($query->latest()->paginate());
+    }
+
+    public function byTeacher(Request $request, TeacherProfile $teacher): JsonResponse
+    {
+        $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+        ]);
+
+        $query = Schedule::query()
+            ->with(['teacher.user', 'class'])
+            ->where('teacher_id', $teacher->id);
+
+        if ($request->filled('from')) {
+            $from = Carbon::parse($request->string('from'))->format('l');
+            $query->where('day', $from);
+        }
+
+        if ($request->filled('to')) {
+            $to = Carbon::parse($request->string('to'))->format('l');
+            $query->where('day', $to);
+        }
+
+        return response()->json($query->orderBy('day')->orderBy('start_time')->get());
+    }
+
+    public function byClass(Request $request, Classes $class): JsonResponse
+    {
+        $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+        ]);
+
+        $query = Schedule::query()
+            ->with(['teacher.user', 'class'])
+            ->where('class_id', $class->id);
+
+        if ($request->filled('from')) {
+            $from = Carbon::parse($request->string('from'))->format('l');
+            $query->where('day', $from);
+        }
+
+        if ($request->filled('to')) {
+            $to = Carbon::parse($request->string('to'))->format('l');
+            $query->where('day', $to);
+        }
+
+        return response()->json($query->orderBy('day')->orderBy('start_time')->get());
+    }
+
+    public function me(Request $request): JsonResponse
+    {
+        if ($request->user()->user_type !== 'student' || !$request->user()->studentProfile) {
+            abort(403, 'Hanya untuk siswa');
+        }
+
+        $date = $request->filled('date')
+            ? Carbon::parse($request->string('date'))
+            : now();
+
+        $day = $date->format('l');
+
+        $schedules = Schedule::query()
+            ->with(['teacher.user', 'class'])
+            ->where('class_id', $request->user()->studentProfile->class_id)
+            ->where('day', $day)
+            ->orderBy('start_time')
+            ->get();
+
+        return response()->json([
+            'date' => $date->toDateString(),
+            'day' => $day,
+            'items' => $schedules,
+        ]);
     }
 
     public function store(Request $request): JsonResponse

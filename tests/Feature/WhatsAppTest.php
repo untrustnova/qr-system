@@ -29,11 +29,12 @@ it('sends whatsapp text via configured provider', function () {
 
     Sanctum::actingAs($admin);
 
+    // ini fitur untuk .... ngirim whatsapp text via api
     $response = $this->postJson('/api/wa/send-text', [
         'to' => '6281234567890',
-        'message' => 'Halo',
+        'message' => 'Halo? apakah ini bisa?. Kalo bisa harusnya ini menampilkan apa gitu',
     ]);
-
+    
     $response->assertStatus(200)
         ->assertJsonFragment(['message' => 'Sent']);
 });

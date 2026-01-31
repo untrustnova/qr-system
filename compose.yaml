@@ -13,13 +13,12 @@ services:
             XDEBUG_MODE: '${SAIL_XDEBUG_MODE:-off}'
             XDEBUG_CONFIG: '${SAIL_XDEBUG_CONFIG:-client_host=host.docker.internal}'
         volumes:
-            - .:/app
+            - '.:/app'
         working_dir: /app
         networks:
             - sail
         depends_on:
             - mariadb
-
     mariadb:
         image: 'mariadb:latest'
         ports:
@@ -44,22 +43,19 @@ services:
                 - '--innodb_initialized'
             retries: 3
             timeout: 5s
-
     vite:
-        image: node:latest
+        image: 'node:latest'
         working_dir: /app
         volumes:
-            - .:/app
-        command: sh -c "npm install && rm -f public/hot && npm run build"
+            - '.:/app'
+        command: 'sh -c "npm install && rm -f public/hot && npm run build"'
         depends_on:
             - laravel.test
         networks:
             - sail
-
 networks:
     sail:
         driver: bridge
-
 volumes:
     sail-mariadb:
         driver: local

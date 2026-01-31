@@ -33,6 +33,8 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
         Route::apiResource('students', StudentController::class);
         Route::post('/students/import', [StudentController::class, 'import']);
         Route::apiResource('schedules', ScheduleController::class)->except(['index', 'show']);
+        Route::get('/teachers/{teacher}/schedules', [ScheduleController::class, 'byTeacher']);
+        Route::get('/classes/{class}/schedules', [ScheduleController::class, 'byClass']);
         Route::apiResource('school-years', SchoolYearController::class);
         Route::apiResource('semesters', SemesterController::class);
         Route::apiResource('rooms', RoomController::class);
@@ -47,6 +49,10 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
         Route::get('/absence-requests', [AbsenceRequestController::class, 'index']);
         Route::post('/absence-requests/{absenceRequest}/approve', [AbsenceRequestController::class, 'approve']);
         Route::post('/absence-requests/{absenceRequest}/reject', [AbsenceRequestController::class, 'reject']);
+        Route::get('/attendance/teachers/daily', [AttendanceController::class, 'teachersDailyAttendance']);
+        Route::post('/attendance/manual', [AttendanceController::class, 'manual']);
+        Route::get('/waka/attendance/summary', [AttendanceController::class, 'wakaSummary']);
+        Route::get('/students/absences', [AttendanceController::class, 'studentsAbsences']);
     });
 
     Route::middleware('role:admin,teacher')->group(function (): void {
@@ -72,8 +78,19 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
         Route::post('/attendance/{attendance}/void', [AttendanceController::class, 'void']);
     });
 
+    Route::middleware('role:teacher')->group(function (): void {
+        Route::get('/me/attendance/teaching', [AttendanceController::class, 'meTeaching']);
+        Route::get('/me/attendance/teaching/summary', [AttendanceController::class, 'summaryTeaching']);
+        Route::get('/me/students/attendance-summary', [AttendanceController::class, 'studentsAttendanceSummary']);
+        Route::get('/classes/{class}/attendance', [AttendanceController::class, 'classAttendanceByDate']);
+        Route::get('/classes/{class}/students/attendance-summary', [AttendanceController::class, 'classStudentsSummary']);
+        Route::get('/classes/{class}/students/absences', [AttendanceController::class, 'classStudentsAbsences']);
+    });
+
     Route::middleware('role:student')->group(function (): void {
         Route::get('/me/attendance', [AttendanceController::class, 'me']);
+        Route::get('/me/attendance/summary', [AttendanceController::class, 'summaryMe']);
+        Route::get('/me/schedules', [ScheduleController::class, 'me']);
         Route::post('/me/devices', [DeviceController::class, 'store']);
         Route::delete('/me/devices/{device}', [DeviceController::class, 'destroy']);
     });

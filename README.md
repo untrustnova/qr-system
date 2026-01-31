@@ -75,6 +75,39 @@ All protected with Sanctum; role guard via middleware `role:{admin|teacher|stude
 - Guru melihat jadwal, generate QR sesi, siswa scan untuk presensi, guru scan/klik hadir di akhir jam.
 - Rekap dapat diekspor CSV; monitoring real-time via Reverb.
 
+## User flow per role (detail)
+### 1) Admin (role: admin)
+- Login via `/auth/login` (API) atau `/login` (web) lalu ambil token.
+- Kelola master data: jurusan, kelas, guru, siswa, tahun ajaran, semester, ruang, mata pelajaran, jam pelajaran.
+- Kelola jadwal pelajaran (create/update/delete).
+- Lihat jadwal (`GET /schedules`, `GET /schedules/{id}`).
+- Generate/revoke QR sesi (guru/kelas) via `/qrcodes/generate` dan `/qrcodes/{token}/revoke`.
+- Lihat presensi per jadwal, rekap, export CSV; bisa ubah status/void/attach bukti.
+- Kirim notifikasi WhatsApp (opsional, bila provider tersedia).
+
+### 2) Waka/Kesiswaan (role: admin + admin-type: waka)
+- Semua akses admin di atas, plus:
+- Bulk input jadwal per kelas (`POST /classes/{class}/schedules/bulk`).
+- Review daftar pengajuan izin/sakit/dispensasi.
+- Approve/Reject pengajuan dan simpan tanda tangan persetujuan.
+
+### 3) Guru (role: teacher)
+- Login, lihat jadwal mengajar sendiri.
+- Generate QR untuk sesi mengajar (untuk siswa scan) dan revoke bila perlu.
+- Lihat presensi per jadwal, rekap kelas, dan export CSV.
+- Tandai status presensi (excuse/void) dan lampirkan bukti bila dibutuhkan.
+- Ajukan izin/sakit/dispensasi untuk siswa (sebagai pengusul).
+
+### 4) Siswa (role: student)
+- Login dan cek presensi pribadi (`GET /me/attendance`).
+- Daftarkan perangkat aktif (1 perangkat) untuk scan QR (`POST /me/devices`).
+- Scan QR saat kelas berlangsung (`POST /attendance/scan`).
+- Ajukan izin/sakit/dispensasi untuk diri sendiri.
+
+### 5) Pengurus Kelas (role: student + class-officer)
+- Semua alur siswa di atas, plus:
+- Generate/revoke QR kelas (khusus QR siswa) untuk membantu presensi kelas.
+
 ## API Docs
 - Scalar UI: `/docs` (reads `public/docs/openapi.json`).
 

@@ -151,6 +151,16 @@ Use `{BASE_URL}` for your host (e.g., `http://localhost:8000`). All endpoints ar
 }
 ```
 
+`{BASE_URL}/api/wa/send-media`
+```json
+{
+  "to": "6281234567890",
+  "mediaBase64": "data:image/png;base64,iVBORw0KGgoAAA...",
+  "filename": "bukti.png",
+  "caption": "Bukti"
+}
+```
+
 ## Auth
 `{BASE_URL}/api/auth/login`
 ```json
@@ -221,7 +231,7 @@ Use `{BASE_URL}` for your host (e.g., `http://localhost:8000`). All endpoints ar
 `{BASE_URL}/api/attendance/{attendance_id}/excuse`
 ```json
 {
-  "status": "izin",
+  "status": "excused",
   "reason": "Surat izin"
 }
 ```
@@ -263,6 +273,92 @@ file: <upload>
 
 ## Student view
 `{BASE_URL}/api/me/attendance`
+```json
+{}
+```
+
+`{BASE_URL}/api/me/attendance?from=2026-01-01&to=2026-01-31&status=late`
+```json
+{}
+```
+
+`{BASE_URL}/api/me/attendance/summary?from=2026-01-01&to=2026-01-31`
+```json
+{}
+```
+
+`{BASE_URL}/api/me/schedules?date=2026-01-31`
+```json
+{}
+```
+
+## Teacher view
+`{BASE_URL}/api/me/attendance/teaching?from=2026-01-01&to=2026-01-31&status=present`
+```json
+{}
+```
+
+`{BASE_URL}/api/me/attendance/teaching/summary?from=2026-01-01&to=2026-01-31`
+```json
+{}
+```
+
+`{BASE_URL}/api/me/students/attendance-summary?from=2026-01-01&to=2026-01-31&threshold=3`
+```json
+{}
+```
+
+## Homeroom teacher (wali kelas)
+`{BASE_URL}/api/classes/{class_id}/attendance?date=2026-01-31`
+```json
+{}
+```
+
+`{BASE_URL}/api/classes/{class_id}/students/attendance-summary?from=2026-01-01&to=2026-01-31&threshold=3`
+```json
+{}
+```
+
+`{BASE_URL}/api/classes/{class_id}/students/absences?from=2026-01-01&to=2026-01-31`
+```json
+{}
+```
+
+## Waka (admin type)
+`{BASE_URL}/api/attendance/teachers/daily?date=2026-01-31`
+```json
+{}
+```
+
+`{BASE_URL}/api/attendance/manual`
+```json
+{
+  "attendee_type": "student",
+  "student_id": 12,
+  "schedule_id": 22,
+  "status": "absent",
+  "date": "2026-01-31",
+  "reason": "Alpha"
+}
+```
+
+`{BASE_URL}/api/waka/attendance/summary?from=2026-01-01&to=2026-01-31`
+```json
+{}
+```
+
+`{BASE_URL}/api/students/absences?from=2026-01-01&to=2026-01-31&class_id=1`
+```json
+{}
+```
+
+## Admin views
+`{BASE_URL}/api/teachers/{teacher_id}/schedules`
+```json
+{}
+```
+
+`{BASE_URL}/api/classes/{class_id}/schedules`
 ```json
 {}
 ```

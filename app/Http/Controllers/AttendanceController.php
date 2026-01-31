@@ -5,12 +5,15 @@ namespace App\Http\Controllers;
 use App\Events\AttendanceRecorded;
 use App\Models\Attendance;
 use App\Models\AttendanceAttachment;
+use App\Models\Classes;
 use App\Models\Qrcode;
 use App\Models\Schedule;
+use App\Models\TeacherProfile;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
@@ -94,7 +97,8 @@ class AttendanceController extends Controller
             'source' => 'qrcode',
         ]);
 
-        AttendanceRecorded::dispatch($attendance);
+        // dispatch event after creation to ensure ID is available
+        AttendanceRecorded::dispatch($attendance); 
 
         Log::info('attendance.recorded', [
             'attendance_id' => $attendance->id,
@@ -112,13 +116,556 @@ class AttendanceController extends Controller
             abort(403, 'Hanya untuk siswa');
         }
 
-        $attendances = Attendance::query()
+        $query = Attendance::query()
             ->with(['schedule.teacher.user', 'schedule.class'])
-            ->where('student_id', $request->user()->studentProfile->id)
-            ->latest('date')
-            ->paginate();
+            ->where('student_id', $request->user()->studentProfile->id);
+
+        if ($request->filled('from')) {
+            $query->whereDate('date', '>=', $request->date('from'));
+        }
+
+        if ($request->filled('to')) {
+            $query->whereDate('date', '<=', $request->date('to'));
+        }
+
+        if ($request->filled('status')) {
+            $request->validate([
+                'status' => ['in:present,late,excused,sick,absent'],
+            ]);
+            $query->where('status', $request->string('status'));
+        }
+
+        $attendances = $query->latest('date')->paginate();
 
         return response()->json($attendances);
+    }
+
+    public function summaryMe(Request $request): JsonResponse
+    {
+        if ($request->user()->user_type !== 'student' || !$request->user()->studentProfile) {
+            abort(403, 'Hanya untuk siswa');
+        }
+
+        $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+        ]);
+
+        $studentId = $request->user()->studentProfile->id;
+
+        $baseQuery = Attendance::query()->where('student_id', $studentId);
+
+        if ($request->filled('from')) {
+            $baseQuery->whereDate('date', '>=', $request->date('from'));
+        }
+
+        if ($request->filled('to')) {
+            $baseQuery->whereDate('date', '<=', $request->date('to'));
+        }
+
+        $statusSummary = (clone $baseQuery)
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->get();
+
+        $dailySummary = (clone $baseQuery)
+            ->selectRaw('DATE(date) as day, status, count(*) as total')
+            ->groupBy('day', 'status')
+            ->orderBy('day')
+            ->get();
+
+        return response()->json([
+            'status_summary' => $statusSummary,
+            'daily_summary' => $dailySummary,
+        ]);
+    }
+
+    public function meTeaching(Request $request): JsonResponse
+    {
+        if ($request->user()->user_type !== 'teacher' || !$request->user()->teacherProfile) {
+            abort(403, 'Hanya untuk guru');
+        }
+
+        $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+            'status' => ['nullable', 'in:present,late,excused,sick,absent'],
+        ]);
+
+        $teacherId = $request->user()->teacherProfile->id;
+
+        $query = Attendance::query()
+            ->with(['schedule.class', 'schedule.teacher.user'])
+            ->where('attendee_type', 'teacher')
+            ->where('teacher_id', $teacherId);
+
+        if ($request->filled('from')) {
+            $query->whereDate('date', '>=', $request->date('from'));
+        }
+
+        if ($request->filled('to')) {
+            $query->whereDate('date', '<=', $request->date('to'));
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->string('status'));
+        }
+
+        return response()->json($query->latest('date')->paginate());
+    }
+
+    public function summaryTeaching(Request $request): JsonResponse
+    {
+        if ($request->user()->user_type !== 'teacher' || !$request->user()->teacherProfile) {
+            abort(403, 'Hanya untuk guru');
+        }
+
+        $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+        ]);
+
+        $teacherId = $request->user()->teacherProfile->id;
+
+        $query = Attendance::query()
+            ->where('attendee_type', 'teacher')
+            ->where('teacher_id', $teacherId);
+
+        if ($request->filled('from')) {
+            $query->whereDate('date', '>=', $request->date('from'));
+        }
+
+        if ($request->filled('to')) {
+            $query->whereDate('date', '<=', $request->date('to'));
+        }
+
+        $statusSummary = (clone $query)
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->get();
+
+        return response()->json([
+            'status_summary' => $statusSummary,
+            'total_sessions' => $query->count(),
+        ]);
+    }
+
+    public function studentsAttendanceSummary(Request $request): JsonResponse
+    {
+        if ($request->user()->user_type !== 'teacher' || !$request->user()->teacherProfile) {
+            abort(403, 'Hanya untuk guru');
+        }
+
+        $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+            'threshold' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        $teacherId = $request->user()->teacherProfile->id;
+
+        $query = Attendance::query()
+            ->with(['student.user', 'schedule.class'])
+            ->where('attendee_type', 'student')
+            ->whereHas('schedule', function ($q) use ($teacherId): void {
+                $q->where('teacher_id', $teacherId);
+            });
+
+        if ($request->filled('from')) {
+            $query->whereDate('date', '>=', $request->date('from'));
+        }
+
+        if ($request->filled('to')) {
+            $query->whereDate('date', '<=', $request->date('to'));
+        }
+
+        $raw = (clone $query)
+            ->selectRaw('student_id, status, count(*) as total')
+            ->groupBy('student_id', 'status')
+            ->get();
+
+        $grouped = $raw->groupBy('student_id')->map(function ($rows): array {
+            $totals = $rows->pluck('total', 'status')->all();
+            return [
+                'student_id' => $rows->first()->student_id,
+                'totals' => $totals,
+            ];
+        })->values();
+
+        if ($request->filled('threshold')) {
+            $threshold = $request->integer('threshold');
+            $grouped = $grouped->filter(function (array $item) use ($threshold): bool {
+                foreach ($item['totals'] as $count) {
+                    if ($count >= $threshold) {
+                        return true;
+                    }
+                }
+                return false;
+            })->values();
+        }
+
+        $students = $query->get()->groupBy('student_id')->map(function ($rows) {
+            return optional($rows->first()->student)->loadMissing('user');
+        });
+
+        $response = $grouped->map(function (array $item) use ($students): array {
+            return [
+                'student' => $students->get($item['student_id']),
+                'totals' => $item['totals'],
+            ];
+        });
+
+        return response()->json($response);
+    }
+
+    public function classAttendanceByDate(Request $request, Classes $class): JsonResponse
+    {
+        if ($request->user()->user_type !== 'teacher' || !$request->user()->teacherProfile) {
+            abort(403, 'Hanya untuk guru');
+        }
+
+        if (optional($class->homeroomTeacher)->id !== $request->user()->teacherProfile->id) {
+            abort(403, 'Hanya wali kelas yang boleh melihat data ini');
+        }
+
+        $request->validate([
+            'date' => ['required', 'date'],
+        ]);
+
+        $date = Carbon::parse($request->string('date'));
+        $day = $date->format('l');
+
+        $schedules = Schedule::query()
+            ->with(['teacher.user', 'class'])
+            ->where('class_id', $class->id)
+            ->where('day', $day)
+            ->orderBy('start_time')
+            ->get();
+
+        $scheduleIds = $schedules->pluck('id')->all();
+
+        $attendances = Attendance::query()
+            ->with(['student.user', 'schedule'])
+            ->whereIn('schedule_id', $scheduleIds)
+            ->whereDate('date', $date->toDateString())
+            ->get()
+            ->groupBy('schedule_id');
+
+        $items = $schedules->map(function (Schedule $schedule) use ($attendances): array {
+            return [
+                'schedule' => $schedule,
+                'attendances' => $attendances->get($schedule->id, collect())->values(),
+            ];
+        });
+
+        return response()->json([
+            'class' => $class,
+            'date' => $date->toDateString(),
+            'day' => $day,
+            'items' => $items,
+        ]);
+    }
+
+    public function classStudentsSummary(Request $request, Classes $class): JsonResponse
+    {
+        if ($request->user()->user_type !== 'teacher' || !$request->user()->teacherProfile) {
+            abort(403, 'Hanya untuk guru');
+        }
+
+        if (optional($class->homeroomTeacher)->id !== $request->user()->teacherProfile->id) {
+            abort(403, 'Hanya wali kelas yang boleh melihat data ini');
+        }
+
+        $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+            'threshold' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        $query = Attendance::query()
+            ->where('attendee_type', 'student')
+            ->whereHas('schedule', function ($q) use ($class): void {
+                $q->where('class_id', $class->id);
+            });
+
+        if ($request->filled('from')) {
+            $query->whereDate('date', '>=', $request->date('from'));
+        }
+
+        if ($request->filled('to')) {
+            $query->whereDate('date', '<=', $request->date('to'));
+        }
+
+        $raw = (clone $query)
+            ->selectRaw('student_id, status, count(*) as total')
+            ->groupBy('student_id', 'status')
+            ->get();
+
+        $grouped = $raw->groupBy('student_id')->map(function ($rows): array {
+            return [
+                'student_id' => $rows->first()->student_id,
+                'totals' => $rows->pluck('total', 'status')->all(),
+            ];
+        })->values();
+
+        if ($request->filled('threshold')) {
+            $threshold = $request->integer('threshold');
+            $grouped = $grouped->filter(function (array $item) use ($threshold): bool {
+                foreach ($item['totals'] as $count) {
+                    if ($count >= $threshold) {
+                        return true;
+                    }
+                }
+                return false;
+            })->values();
+        }
+
+        $students = $class->students()->with('user')->get()->keyBy('id');
+
+        $response = $grouped->map(function (array $item) use ($students): array {
+            return [
+                'student' => $students->get($item['student_id']),
+                'totals' => $item['totals'],
+            ];
+        });
+
+        return response()->json($response);
+    }
+
+    public function classStudentsAbsences(Request $request, Classes $class): JsonResponse
+    {
+        if ($request->user()->user_type !== 'teacher' || !$request->user()->teacherProfile) {
+            abort(403, 'Hanya untuk guru');
+        }
+
+        if (optional($class->homeroomTeacher)->id !== $request->user()->teacherProfile->id) {
+            abort(403, 'Hanya wali kelas yang boleh melihat data ini');
+        }
+
+        $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+            'status' => ['nullable', 'in:present,late,excused,sick,absent'],
+        ]);
+
+        $query = Attendance::query()
+            ->with(['student.user', 'schedule'])
+            ->where('attendee_type', 'student')
+            ->whereHas('schedule', function ($q) use ($class): void {
+                $q->where('class_id', $class->id);
+            });
+
+        if ($request->filled('from')) {
+            $query->whereDate('date', '>=', $request->date('from'));
+        }
+
+        if ($request->filled('to')) {
+            $query->whereDate('date', '<=', $request->date('to'));
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->string('status'));
+        } else {
+            $query->where('status', '!=', 'present');
+        }
+
+        $items = $query->orderBy('date')->get()->groupBy('student_id');
+
+        $response = $items->map(function ($rows): array {
+            $student = optional($rows->first())->student;
+
+            return [
+                'student' => $student ? $student->loadMissing('user') : null,
+                'items' => $rows->values(),
+            ];
+        })->values();
+
+        return response()->json($response);
+    }
+
+    public function teachersDailyAttendance(Request $request): JsonResponse
+    {
+        $request->validate([
+            'date' => ['required', 'date'],
+        ]);
+
+        $date = Carbon::parse($request->string('date'))->toDateString();
+
+        $teachers = TeacherProfile::query()
+            ->with('user')
+            ->orderBy('id')
+            ->get();
+
+        $attendanceByTeacher = Attendance::query()
+            ->where('attendee_type', 'teacher')
+            ->whereDate('date', $date)
+            ->orderByDesc('checked_in_at')
+            ->get()
+            ->groupBy('teacher_id');
+
+        $items = $teachers->map(function (TeacherProfile $teacher) use ($attendanceByTeacher): array {
+            $attendance = $attendanceByTeacher->get($teacher->id)?->first();
+
+            return [
+                'teacher' => $teacher,
+                'attendance' => $attendance,
+                'status' => $attendance?->status ?? 'absent',
+            ];
+        });
+
+        return response()->json([
+            'date' => $date,
+            'items' => $items,
+        ]);
+    }
+
+    public function manual(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'attendee_type' => ['required', 'in:student,teacher'],
+            'student_id' => ['nullable', 'exists:student_profiles,id'],
+            'teacher_id' => ['nullable', 'exists:teacher_profiles,id'],
+            'schedule_id' => ['required', 'exists:schedules,id'],
+            'status' => ['required', 'in:present,late,excused,sick,absent'],
+            'date' => ['required', 'date'],
+            'reason' => ['nullable', 'string'],
+        ]);
+
+        if ($data['attendee_type'] === 'student' && empty($data['student_id'])) {
+            abort(422, 'student_id wajib untuk attendee_type student');
+        }
+
+        if ($data['attendee_type'] === 'teacher' && empty($data['teacher_id'])) {
+            abort(422, 'teacher_id wajib untuk attendee_type teacher');
+        }
+
+        $attributes = [
+            'attendee_type' => $data['attendee_type'],
+            'schedule_id' => $data['schedule_id'],
+            'student_id' => $data['student_id'] ?? null,
+            'teacher_id' => $data['teacher_id'] ?? null,
+        ];
+
+        $existing = Attendance::where($attributes)->first();
+
+        if ($existing) {
+            $existing->update([
+                'status' => $data['status'],
+                'reason' => $data['reason'] ?? null,
+                'date' => $data['date'],
+                'checked_in_at' => $existing->checked_in_at ?? $data['date'],
+                'source' => 'manual',
+            ]);
+
+            return response()->json($existing->load(['student.user', 'teacher.user', 'schedule']));
+        }
+
+        $attendance = Attendance::create([
+            ...$attributes,
+            'date' => $data['date'],
+            'status' => $data['status'],
+            'reason' => $data['reason'] ?? null,
+            'checked_in_at' => $data['date'],
+            'source' => 'manual',
+        ]);
+
+        return response()->json($attendance->load(['student.user', 'teacher.user', 'schedule']), 201);
+    }
+
+    public function wakaSummary(Request $request): JsonResponse
+    {
+        $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+        ]);
+
+        $query = Attendance::query()->where('attendee_type', 'student');
+
+        if ($request->filled('from')) {
+            $query->whereDate('date', '>=', $request->date('from'));
+        }
+
+        if ($request->filled('to')) {
+            $query->whereDate('date', '<=', $request->date('to'));
+        }
+
+        $statusSummary = (clone $query)
+            ->selectRaw('status, count(*) as total')
+            ->groupBy('status')
+            ->get();
+
+        $classSummary = (clone $query)
+            ->selectRaw('schedules.class_id as class_id, status, count(*) as total')
+            ->join('schedules', 'attendances.schedule_id', '=', 'schedules.id')
+            ->groupBy('schedules.class_id', 'status')
+            ->get()
+            ->groupBy('class_id')
+            ->map(function ($rows) {
+                return $rows->pluck('total', 'status')->all();
+            });
+
+        $studentSummary = (clone $query)
+            ->selectRaw('student_id, status, count(*) as total')
+            ->groupBy('student_id', 'status')
+            ->get()
+            ->groupBy('student_id')
+            ->map(function ($rows) {
+                return $rows->pluck('total', 'status')->all();
+            });
+
+        return response()->json([
+            'status_summary' => $statusSummary,
+            'class_summary' => $classSummary,
+            'student_summary' => $studentSummary,
+        ]);
+    }
+
+    public function studentsAbsences(Request $request): JsonResponse
+    {
+        $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+            'status' => ['nullable', 'in:present,late,excused,sick,absent'],
+            'class_id' => ['nullable', 'exists:classes,id'],
+        ]);
+
+        $query = Attendance::query()
+            ->with(['student.user', 'schedule.class'])
+            ->where('attendee_type', 'student');
+
+        if ($request->filled('from')) {
+            $query->whereDate('date', '>=', $request->date('from'));
+        }
+
+        if ($request->filled('to')) {
+            $query->whereDate('date', '<=', $request->date('to'));
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->string('status'));
+        } else {
+            $query->where('status', '!=', 'present');
+        }
+
+        if ($request->filled('class_id')) {
+            $classId = $request->integer('class_id');
+            $query->whereHas('schedule', function ($q) use ($classId): void {
+                $q->where('class_id', $classId);
+            });
+        }
+
+        $items = $query->orderBy('date')->get()->groupBy('student_id');
+
+        $response = $items->map(function ($rows): array {
+            $student = optional($rows->first())->student;
+
+            return [
+                'student' => $student ? $student->loadMissing('user') : null,
+                'items' => $rows->values(),
+            ];
+        })->values();
+
+        return response()->json($response);
     }
 
     public function recap(Request $request): JsonResponse
