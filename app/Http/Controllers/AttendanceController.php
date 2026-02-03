@@ -8,6 +8,7 @@ use App\Models\AttendanceAttachment;
 use App\Models\Classes;
 use App\Models\Qrcode;
 use App\Models\Schedule;
+use App\Models\StudentProfile;
 use App\Models\TeacherProfile;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Http\JsonResponse;
@@ -130,7 +131,7 @@ class AttendanceController extends Controller
 
         if ($request->filled('status')) {
             $request->validate([
-                'status' => ['in:present,late,excused,sick,absent'],
+                'status' => ['in:present,late,excused,sick,absent,dinas,izin'],
             ]);
             $query->where('status', $request->string('status'));
         }
@@ -189,7 +190,7 @@ class AttendanceController extends Controller
         $request->validate([
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
-            'status' => ['nullable', 'in:present,late,excused,sick,absent'],
+            'status' => ['nullable', 'in:present,late,excused,sick,absent,dinas,izin'],
         ]);
 
         $teacherId = $request->user()->teacherProfile->id;
@@ -279,10 +280,28 @@ class AttendanceController extends Controller
             $query->whereDate('date', '<=', $request->date('to'));
         }
 
-        $raw = (clone $query)
-            ->selectRaw('student_id, status, count(*) as total')
-            ->groupBy('student_id', 'status')
-            ->get();
+        $perPage = $this->resolvePerPage($request);
+        $studentIds = [];
+        if ($perPage) {
+            $studentIdsPage = (clone $query)
+                ->select('student_id')
+                ->distinct()
+                ->orderBy('student_id')
+                ->paginate($perPage);
+
+            $studentIds = $studentIdsPage->getCollection()->pluck('student_id')->all();
+
+            $raw = (clone $query)
+                ->whereIn('student_id', $studentIds)
+                ->selectRaw('student_id, status, count(*) as total')
+                ->groupBy('student_id', 'status')
+                ->get();
+        } else {
+            $raw = (clone $query)
+                ->selectRaw('student_id, status, count(*) as total')
+                ->groupBy('student_id', 'status')
+                ->get();
+        }
 
         $grouped = $raw->groupBy('student_id')->map(function ($rows): array {
             $totals = $rows->pluck('total', 'status')->all();
@@ -304,9 +323,15 @@ class AttendanceController extends Controller
             })->values();
         }
 
-        $students = $query->get()->groupBy('student_id')->map(function ($rows) {
-            return optional($rows->first()->student)->loadMissing('user');
-        });
+        if (!$perPage) {
+            $studentIds = $grouped->pluck('student_id')->all();
+        }
+
+        $students = StudentProfile::query()
+            ->with('user')
+            ->whereIn('id', $studentIds)
+            ->get()
+            ->keyBy('id');
 
         $response = $grouped->map(function (array $item) use ($students): array {
             return [
@@ -314,6 +339,11 @@ class AttendanceController extends Controller
                 'totals' => $item['totals'],
             ];
         });
+
+        if ($perPage) {
+            $studentIdsPage->setCollection($response->values());
+            return response()->json($studentIdsPage);
+        }
 
         return response()->json($response);
     }
@@ -396,10 +426,28 @@ class AttendanceController extends Controller
             $query->whereDate('date', '<=', $request->date('to'));
         }
 
-        $raw = (clone $query)
-            ->selectRaw('student_id, status, count(*) as total')
-            ->groupBy('student_id', 'status')
-            ->get();
+        $perPage = $this->resolvePerPage($request);
+        $studentIds = [];
+        if ($perPage) {
+            $studentIdsPage = (clone $query)
+                ->select('student_id')
+                ->distinct()
+                ->orderBy('student_id')
+                ->paginate($perPage);
+
+            $studentIds = $studentIdsPage->getCollection()->pluck('student_id')->all();
+
+            $raw = (clone $query)
+                ->whereIn('student_id', $studentIds)
+                ->selectRaw('student_id, status, count(*) as total')
+                ->groupBy('student_id', 'status')
+                ->get();
+        } else {
+            $raw = (clone $query)
+                ->selectRaw('student_id, status, count(*) as total')
+                ->groupBy('student_id', 'status')
+                ->get();
+        }
 
         $grouped = $raw->groupBy('student_id')->map(function ($rows): array {
             return [
@@ -420,7 +468,15 @@ class AttendanceController extends Controller
             })->values();
         }
 
-        $students = $class->students()->with('user')->get()->keyBy('id');
+        if (!$perPage) {
+            $studentIds = $grouped->pluck('student_id')->all();
+        }
+
+        $students = $class->students()
+            ->with('user')
+            ->whereIn('id', $studentIds)
+            ->get()
+            ->keyBy('id');
 
         $response = $grouped->map(function (array $item) use ($students): array {
             return [
@@ -428,6 +484,11 @@ class AttendanceController extends Controller
                 'totals' => $item['totals'],
             ];
         });
+
+        if ($perPage) {
+            $studentIdsPage->setCollection($response->values());
+            return response()->json($studentIdsPage);
+        }
 
         return response()->json($response);
     }
@@ -445,7 +506,7 @@ class AttendanceController extends Controller
         $request->validate([
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
-            'status' => ['nullable', 'in:present,late,excused,sick,absent'],
+            'status' => ['nullable', 'in:present,late,excused,sick,absent,dinas,izin'],
         ]);
 
         $query = Attendance::query()
@@ -467,6 +528,66 @@ class AttendanceController extends Controller
             $query->where('status', $request->string('status'));
         } else {
             $query->where('status', '!=', 'present');
+        }
+
+        $perPage = $this->resolvePerPage($request);
+        if ($perPage) {
+            $studentIdsPage = (clone $query)
+                ->select('student_id')
+                ->distinct()
+                ->orderBy('student_id')
+                ->paginate($perPage);
+
+            $studentIds = $studentIdsPage->getCollection()->pluck('student_id')->all();
+
+            $items = $query
+                ->whereIn('student_id', $studentIds)
+                ->orderBy('date')
+                ->get()
+                ->groupBy('student_id');
+
+            $response = collect($studentIds)->map(function ($studentId) use ($items): array {
+                $rows = $items->get($studentId, collect());
+                $student = optional($rows->first())->student;
+
+                return [
+                    'student' => $student ? $student->loadMissing('user') : null,
+                    'items' => $rows->values(),
+                ];
+            });
+
+            $studentIdsPage->setCollection($response);
+            return response()->json($studentIdsPage);
+        }
+
+        $perPage = $this->resolvePerPage($request);
+        if ($perPage) {
+            $studentIdsPage = (clone $query)
+                ->select('student_id')
+                ->distinct()
+                ->orderBy('student_id')
+                ->paginate($perPage);
+
+            $studentIds = $studentIdsPage->getCollection()->pluck('student_id')->all();
+
+            $items = $query
+                ->whereIn('student_id', $studentIds)
+                ->orderBy('date')
+                ->get()
+                ->groupBy('student_id');
+
+            $response = collect($studentIds)->map(function ($studentId) use ($items): array {
+                $rows = $items->get($studentId, collect());
+                $student = optional($rows->first())->student;
+
+                return [
+                    'student' => $student ? $student->loadMissing('user') : null,
+                    'items' => $rows->values(),
+                ];
+            });
+
+            $studentIdsPage->setCollection($response);
+            return response()->json($studentIdsPage);
         }
 
         $items = $query->orderBy('date')->get()->groupBy('student_id');
@@ -491,19 +612,28 @@ class AttendanceController extends Controller
 
         $date = Carbon::parse($request->string('date'))->toDateString();
 
-        $teachers = TeacherProfile::query()
+        $perPage = $this->resolvePerPage($request);
+        $teachersQuery = TeacherProfile::query()
             ->with('user')
-            ->orderBy('id')
-            ->get();
+            ->orderBy('id');
+
+        $teachers = $perPage
+            ? $teachersQuery->paginate($perPage)
+            : $teachersQuery->get();
+
+        $teacherIds = $perPage
+            ? $teachers->getCollection()->pluck('id')->all()
+            : $teachers->pluck('id')->all();
 
         $attendanceByTeacher = Attendance::query()
             ->where('attendee_type', 'teacher')
             ->whereDate('date', $date)
+            ->whereIn('teacher_id', $teacherIds)
             ->orderByDesc('checked_in_at')
             ->get()
             ->groupBy('teacher_id');
 
-        $items = $teachers->map(function (TeacherProfile $teacher) use ($attendanceByTeacher): array {
+        $items = ($perPage ? $teachers->getCollection() : $teachers)->map(function (TeacherProfile $teacher) use ($attendanceByTeacher): array {
             $attendance = $attendanceByTeacher->get($teacher->id)?->first();
 
             return [
@@ -512,6 +642,14 @@ class AttendanceController extends Controller
                 'status' => $attendance?->status ?? 'absent',
             ];
         });
+
+        if ($perPage) {
+            $teachers->setCollection($items);
+            return response()->json([
+                'date' => $date,
+                'items' => $teachers,
+            ]);
+        }
 
         return response()->json([
             'date' => $date,
@@ -526,7 +664,7 @@ class AttendanceController extends Controller
             'student_id' => ['nullable', 'exists:student_profiles,id'],
             'teacher_id' => ['nullable', 'exists:teacher_profiles,id'],
             'schedule_id' => ['required', 'exists:schedules,id'],
-            'status' => ['required', 'in:present,late,excused,sick,absent'],
+            'status' => ['required', 'in:present,late,excused,sick,absent,dinas,izin'],
             'date' => ['required', 'date'],
             'reason' => ['nullable', 'string'],
         ]);
@@ -625,7 +763,7 @@ class AttendanceController extends Controller
         $request->validate([
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
-            'status' => ['nullable', 'in:present,late,excused,sick,absent'],
+            'status' => ['nullable', 'in:present,late,excused,sick,absent,dinas,izin'],
             'class_id' => ['nullable', 'exists:classes,id'],
         ]);
 
@@ -774,11 +912,13 @@ class AttendanceController extends Controller
             abort(403, 'Tidak boleh melihat presensi jadwal ini');
         }
 
-        $attendances = Attendance::query()
+        $query = Attendance::query()
             ->with(['student.user', 'teacher.user'])
             ->where('schedule_id', $schedule->id)
-            ->latest('checked_in_at')
-            ->get();
+            ->latest('checked_in_at');
+
+        $perPage = $this->resolvePerPage($request);
+        $attendances = $perPage ? $query->paginate($perPage) : $query->get();
 
         return response()->json($attendances);
     }
@@ -790,7 +930,7 @@ class AttendanceController extends Controller
         }
 
         $data = $request->validate([
-            'status' => ['required', 'in:late,excused,sick,absent,present,dinas,izin'],
+            'status' => ['required', 'in:present,late,excused,sick,absent,dinas,izin'],
             'reason' => ['nullable', 'string'],
         ]);
 
@@ -864,5 +1004,20 @@ class AttendanceController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
+    }
+
+    private function resolvePerPage(Request $request): ?int
+    {
+        if (!$request->filled('per_page') && !$request->filled('page')) {
+            return null;
+        }
+
+        $request->validate([
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:200'],
+        ]);
+
+        $perPage = $request->integer('per_page', 15);
+
+        return min(max($perPage, 1), 200);
     }
 }

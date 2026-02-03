@@ -15,6 +15,13 @@ Use `{BASE_URL}` for your host (e.g., `http://localhost:8000`). All endpoints ar
 {}
 ```
 
+`{BASE_URL}/api/me`
+```json
+{}
+```
+
+---
+
 ## Devices (siswa)
 `{BASE_URL}/api/me/devices`
 ```json
@@ -30,15 +37,7 @@ Use `{BASE_URL}` for your host (e.g., `http://localhost:8000`). All endpoints ar
 {}
 ```
 
-## Classes
-`{BASE_URL}/api/classes`
-```json
-{
-  "grade": "10",
-  "label": "10-A",
-  "major_id": 1
-}
-```
+---
 
 ## Majors (Jurusan)
 `{BASE_URL}/api/majors`
@@ -50,6 +49,20 @@ Use `{BASE_URL}` for your host (e.g., `http://localhost:8000`). All endpoints ar
 }
 ```
 
+---
+
+## Classes
+`{BASE_URL}/api/classes`
+```json
+{
+  "grade": "10",
+  "label": "10-A",
+  "major_id": 1
+}
+```
+
+---
+
 ## Teachers
 `{BASE_URL}/api/teachers`
 ```json
@@ -60,7 +73,9 @@ Use `{BASE_URL}` for your host (e.g., `http://localhost:8000`). All endpoints ar
   "password": "secret123",
   "nip": "12345",
   "homeroom_class_id": 1,
-  "subject": "Matematika"
+  "subject": "Matematika",
+  "phone": "62812xxxx",
+  "contact": "Telegram/WA"
 }
 ```
 
@@ -75,11 +90,15 @@ Use `{BASE_URL}` for your host (e.g., `http://localhost:8000`). All endpoints ar
       "password": "secret123",
       "nip": "12345",
       "homeroom_class_id": 1,
-      "subject": "Matematika"
+      "subject": "Matematika",
+      "phone": "62812xxxx",
+      "contact": "Telegram/WA"
     }
   ]
 }
 ```
+
+---
 
 ## Students
 `{BASE_URL}/api/students`
@@ -93,7 +112,10 @@ Use `{BASE_URL}` for your host (e.g., `http://localhost:8000`). All endpoints ar
   "nis": "123456",
   "gender": "L",
   "address": "Alamat siswa",
-  "class_id": 1
+  "class_id": 1,
+  "is_class_officer": false,
+  "phone": "62812xxxx",
+  "contact": "Telegram/WA"
 }
 ```
 
@@ -110,11 +132,16 @@ Use `{BASE_URL}` for your host (e.g., `http://localhost:8000`). All endpoints ar
       "nis": "123456",
       "gender": "L",
       "address": "Alamat siswa",
-      "class_id": 1
+      "class_id": 1,
+      "is_class_officer": false,
+      "phone": "62812xxxx",
+      "contact": "Telegram/WA"
     }
   ]
 }
 ```
+
+---
 
 ## Schedules
 `{BASE_URL}/api/schedules`
@@ -123,50 +150,14 @@ Use `{BASE_URL}` for your host (e.g., `http://localhost:8000`). All endpoints ar
   "day": "Monday",
   "start_time": "07:30",
   "end_time": "09:00",
+  "title": "Matematika",
   "subject_name": "Matematika",
+  "subject_id": 1,
   "teacher_id": 1,
   "class_id": 1,
   "room": "R-101",
   "semester": 1,
   "year": 2026
-}
-```
-
-## WhatsApp
-`{BASE_URL}/api/wa/send-text`
-```json
-{
-  "to": "6281234567890",
-  "message": "Pesan WA"
-}
-```
-
-`{BASE_URL}/api/wa/send-media`
-```json
-{
-  "to": "6281234567890",
-  "mediaBase64": "base64data",
-  "filename": "surat-izin.jpg",
-  "caption": "Lampiran surat izin"
-}
-```
-
-`{BASE_URL}/api/wa/send-media`
-```json
-{
-  "to": "6281234567890",
-  "mediaBase64": "data:image/png;base64,iVBORw0KGgoAAA...",
-  "filename": "bukti.png",
-  "caption": "Bukti"
-}
-```
-
-## Auth
-`{BASE_URL}/api/auth/login`
-```json
-{
-  "login": "admin@school.id",
-  "password": "secret123"
 }
 ```
 
@@ -181,11 +172,40 @@ Use `{BASE_URL}` for your host (e.g., `http://localhost:8000`). All endpoints ar
       "subject_name": "Matematika",
       "teacher_id": 1,
       "start_time": "07:00",
-      "end_time": "09:40"
+      "end_time": "09:40",
+      "room": "R-101"
     }
   ]
 }
 ```
+
+`{BASE_URL}/api/schedules?date=2026-01-01&class_id=1`
+```json
+{}
+```
+
+---
+
+## WhatsApp
+`{BASE_URL}/api/wa/send-text`
+```json
+{
+  "to": "6281234567890",
+  "message": "Pesan WA"
+}
+```
+
+`{BASE_URL}/api/wa/send-media`
+```json
+{
+  "to": "6281234567890",
+  "mediaBase64": "data:image/png;base64,iVBORw0KGgoAAA...",
+  "filename": "bukti.png",
+  "caption": "Bukti"
+}
+```
+
+---
 
 ## Absence Requests (Dispensasi / Izin Sakit)
 `{BASE_URL}/api/absence-requests`
@@ -199,10 +219,14 @@ Use `{BASE_URL}` for your host (e.g., `http://localhost:8000`). All endpoints ar
 }
 ```
 
-`{BASE_URL}/api/schedules?date=2026-01-01&class_id=1`
+`{BASE_URL}/api/absence-requests/{id}/approve`
 ```json
-{}
+{
+  "approver_signature": "Nama/Paraf"
+}
 ```
+
+---
 
 ## QR Codes
 `{BASE_URL}/api/qrcodes/generate`
@@ -219,7 +243,11 @@ Use `{BASE_URL}` for your host (e.g., `http://localhost:8000`). All endpoints ar
 {}
 ```
 
+---
+
 ## Attendance
+**Status valid:** `present, late, excused, sick, absent, dinas, izin`
+
 `{BASE_URL}/api/attendance/scan`
 ```json
 {
@@ -246,7 +274,7 @@ Use `{BASE_URL}` for your host (e.g., `http://localhost:8000`). All endpoints ar
 file: <upload>
 ```
 
-`{BASE_URL}/api/attendance/schedules/{schedule_id}`
+`{BASE_URL}/api/attendance/schedules/{schedule_id}?per_page=20&page=1`
 ```json
 {}
 ```
@@ -271,13 +299,10 @@ file: <upload>
 {}
 ```
 
-## Student view
-`{BASE_URL}/api/me/attendance`
-```json
-{}
-```
+---
 
-`{BASE_URL}/api/me/attendance?from=2026-01-01&to=2026-01-31&status=late`
+## Student view
+`{BASE_URL}/api/me/attendance?from=2026-01-01&to=2026-01-31&status=late&per_page=20&page=1`
 ```json
 {}
 ```
@@ -292,6 +317,8 @@ file: <upload>
 {}
 ```
 
+---
+
 ## Teacher view
 `{BASE_URL}/api/me/attendance/teaching?from=2026-01-01&to=2026-01-31&status=present`
 ```json
@@ -303,10 +330,12 @@ file: <upload>
 {}
 ```
 
-`{BASE_URL}/api/me/students/attendance-summary?from=2026-01-01&to=2026-01-31&threshold=3`
+`{BASE_URL}/api/me/students/attendance-summary?from=2026-01-01&to=2026-01-31&threshold=3&per_page=20&page=1`
 ```json
 {}
 ```
+
+---
 
 ## Homeroom teacher (wali kelas)
 `{BASE_URL}/api/classes/{class_id}/attendance?date=2026-01-31`
@@ -314,18 +343,20 @@ file: <upload>
 {}
 ```
 
-`{BASE_URL}/api/classes/{class_id}/students/attendance-summary?from=2026-01-01&to=2026-01-31&threshold=3`
+`{BASE_URL}/api/classes/{class_id}/students/attendance-summary?from=2026-01-01&to=2026-01-31&threshold=3&per_page=20&page=1`
 ```json
 {}
 ```
 
-`{BASE_URL}/api/classes/{class_id}/students/absences?from=2026-01-01&to=2026-01-31`
+`{BASE_URL}/api/classes/{class_id}/students/absences?from=2026-01-01&to=2026-01-31&per_page=20&page=1`
 ```json
 {}
 ```
+
+---
 
 ## Waka (admin type)
-`{BASE_URL}/api/attendance/teachers/daily?date=2026-01-31`
+`{BASE_URL}/api/attendance/teachers/daily?date=2026-01-31&per_page=20&page=1`
 ```json
 {}
 ```
@@ -335,6 +366,7 @@ file: <upload>
 {
   "attendee_type": "student",
   "student_id": 12,
+  "teacher_id": null,
   "schedule_id": 22,
   "status": "absent",
   "date": "2026-01-31",
@@ -347,21 +379,25 @@ file: <upload>
 {}
 ```
 
-`{BASE_URL}/api/students/absences?from=2026-01-01&to=2026-01-31&class_id=1`
+`{BASE_URL}/api/students/absences?from=2026-01-01&to=2026-01-31&class_id=1&per_page=20&page=1`
 ```json
 {}
 ```
+
+---
 
 ## Admin views
-`{BASE_URL}/api/teachers/{teacher_id}/schedules`
+`{BASE_URL}/api/teachers/{teacher_id}/schedules?from=2026-01-01&to=2026-01-31&per_page=20&page=1`
 ```json
 {}
 ```
 
-`{BASE_URL}/api/classes/{class_id}/schedules`
+`{BASE_URL}/api/classes/{class_id}/schedules?from=2026-01-01&to=2026-01-31&per_page=20&page=1`
 ```json
 {}
 ```
+
+---
 
 ## Optional Masters
 `{BASE_URL}/api/school-years`

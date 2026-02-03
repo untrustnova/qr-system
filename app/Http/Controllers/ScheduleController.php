@@ -57,7 +57,10 @@ class ScheduleController extends Controller
             $query->where('day', $to);
         }
 
-        return response()->json($query->orderBy('day')->orderBy('start_time')->get());
+        $perPage = $this->resolvePerPage($request);
+        $query->orderBy('day')->orderBy('start_time');
+
+        return response()->json($perPage ? $query->paginate($perPage) : $query->get());
     }
 
     public function byClass(Request $request, Classes $class): JsonResponse
@@ -81,7 +84,10 @@ class ScheduleController extends Controller
             $query->where('day', $to);
         }
 
-        return response()->json($query->orderBy('day')->orderBy('start_time')->get());
+        $perPage = $this->resolvePerPage($request);
+        $query->orderBy('day')->orderBy('start_time');
+
+        return response()->json($perPage ? $query->paginate($perPage) : $query->get());
     }
 
     public function me(Request $request): JsonResponse
@@ -286,5 +292,20 @@ class ScheduleController extends Controller
         $lower = strtolower($day);
 
         return $map[$lower] ?? $day;
+    }
+
+    private function resolvePerPage(Request $request): ?int
+    {
+        if (!$request->filled('per_page') && !$request->filled('page')) {
+            return null;
+        }
+
+        $request->validate([
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:200'],
+        ]);
+
+        $perPage = $request->integer('per_page', 15);
+
+        return min(max($perPage, 1), 200);
     }
 }

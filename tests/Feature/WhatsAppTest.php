@@ -30,6 +30,7 @@ it('sends whatsapp text via configured provider', function () {
     Sanctum::actingAs($admin);
 
     // ini fitur untuk .... ngirim whatsapp text via api
+    // postJson function to /api/wa/send-text
     $response = $this->postJson('/api/wa/send-text', [
         'to' => '6281234567890',
         'message' => 'Halo? apakah ini bisa?. Kalo bisa harusnya ini menampilkan apa gitu',
@@ -37,4 +38,16 @@ it('sends whatsapp text via configured provider', function () {
     
     $response->assertStatus(200)
         ->assertJsonFragment(['message' => 'Sent']);
+
+    // Verify that the HTTP request was sent with correct headers and payloadq
+    Http::assertSent(function ($request) {
+        return $request->url() === 'https://wa.test/send-text'
+            && $request->hasHeaders([
+                'Authorization' => 'Bearer test-token',
+                'Accept' => 'application/json',
+            ]);
+
+            // postJson payload
+            // $data = $request->da
+    });
 });

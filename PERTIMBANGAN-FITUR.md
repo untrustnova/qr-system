@@ -28,14 +28,14 @@ Fokus: (1) perbandingan kesiapan backend Mobile vs Desktop/Web, (2) resiko/konfl
 - Riwayat kehadiran kelas oleh pengurus kelas (per mapel/tanggal) belum ada endpoint khusus selain by schedule.
 
 ### Area yang belum seimbang antara Mobile dan Desktop/Web
-- Desktop/Waka mengharapkan CRUD kehadiran guru/siswa → baru ada `POST /attendance/manual` untuk admin type Waka.
+- Desktop/Waka mengharapkan CRUD kehadiran guru/siswa → baru ada `POST /attendance/manual` untuk admin type Waka. ✅
 - Mobile mengharapkan fitur refleksi/analitik guru yang lebih kaya → baru ada summary basic (per status + total).
 
 ## 2) Resiko / Konflik Endpoint & Data
 
 ### A. Inkonistensi status presensi
 - Validasi `markExcuse` menerima `dinas/izin`, tapi enum DB hanya `present, late, excused, sick, absent`.
-- Risiko: request dengan `izin/dinas` gagal di DB (error SQL) atau data tidak konsisten.
+- Risiko: request dengan `izin/dinas` gagal di DB (error SQL) atau data tidak konsisten. ✅
 - Rekomendasi: samakan enum DB atau ubah validasi agar hanya enum yang valid.
 
 ### B. Jadwal berbasis hari vs tanggal
