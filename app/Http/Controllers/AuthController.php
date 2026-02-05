@@ -20,15 +20,39 @@ class AuthController extends Controller
 
         $data = $request->validate([
             'login' => ['required', 'string'],
-            'password' => ['required', 'string'],
+            'password' => ['nullable', 'string'], // Password optional for NISN login
         ]);
 
+        // Try to find user by username or email first
         $user = User::query()
             ->where('username', $data['login'])
             ->orWhere('email', $data['login'])
             ->first();
 
-        if (! $user || ! Hash::check($data['password'], $user->password)) {
+        // If not found, try to find student by NISN
+        if (! $user) {
+            $studentProfile = \App\Models\StudentProfile::where('nisn', $data['login'])
+                ->orWhere('nis', $data['login'])
+                ->first();
+
+            if ($studentProfile) {
+                $user = $studentProfile->user;
+            }
+        }
+
+        // If user not found at all
+        if (! $user) {
+            throw ValidationException::withMessages([
+                'login' => ['Invalid credentials'],
+            ]);
+        }
+
+        // For students with NISN login, skip password check
+        $isStudentNisnLogin = $user->user_type === 'student' &&
+                              (! isset($data['password']) || empty($data['password']));
+
+        // Check password only if not NISN login
+        if (! $isStudentNisnLogin && ! Hash::check($data['password'] ?? '', $user->password)) {
             throw ValidationException::withMessages([
                 'login' => ['Invalid credentials'],
             ]);
@@ -49,6 +73,7 @@ class AuthController extends Controller
         Log::info('auth.login.success', [
             'user_id' => $user->id,
             'user_type' => $user->user_type,
+            'login_method' => $isStudentNisnLogin ? 'nisn' : 'password',
         ]);
 
         return response()->json([
