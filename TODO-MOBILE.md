@@ -93,7 +93,50 @@
 - **Solusi**: ✅ **IMPLEMENTED** - Endpoint `/mobile/notifications` generate notifikasi on-the-fly dari data attendance
 - **Impact**: ZERO breaking change - endpoint baru khusus Mobile, tidak ganggu web/desktop
 
+### 4. **Dashboard Endpoints** ✅ SOLVED (2026-02-05)
+- **Mobile**: Butuh endpoint dashboard yang menggabungkan jadwal + status kehadiran
+- **Backend**: Tidak ada endpoint dashboard mobile-specific
+- **Solusi**: ✅ **IMPLEMENTED** - 3 endpoint dashboard baru:
+  - `GET /me/dashboard/summary` - Dashboard siswa (jadwal hari ini + status kehadiran)
+  - `GET /me/dashboard/teacher-summary` - Dashboard guru (jadwal mengajar + attendance summary)
+  - `GET /me/homeroom/dashboard` - Dashboard wali kelas (info kelas + attendance)
+- **Impact**: ZERO breaking change - endpoint baru khusus Mobile, tidak ganggu web/desktop
+
+### 5. **Follow-Up Endpoint** ✅ SOLVED (2026-02-05)
+- **Mobile**: Butuh endpoint untuk daftar siswa yang perlu tindak lanjut
+- **Backend**: Tidak ada endpoint follow-up
+- **Solusi**: ✅ **IMPLEMENTED** - `GET /me/students/follow-up` dengan badge logic otomatis
+- **Impact**: ZERO breaking change - endpoint baru khusus Mobile
+
+### 6. **Teachers Endpoint Access** ✅ SOLVED (2026-02-05)
+- **Mobile**: Butuh akses ke daftar guru (read-only)
+- **Backend**: Endpoint `/teachers` hanya untuk admin
+- **Solusi**: ✅ **IMPLEMENTED** - Route terpisah untuk student & teacher (read-only), admin tetap punya full CRUD
+- **Impact**: ZERO breaking change - admin tetap punya akses penuh
+
 ---
+
+## ✅ Backend Implementation Complete (2026-02-05)
+
+**All mobile endpoints are now ready!** 🎉
+
+### Implemented Endpoints:
+1. ✅ `GET /me/dashboard/summary` - Student dashboard
+2. ✅ `GET /me/dashboard/teacher-summary` - Teacher dashboard
+3. ✅ `GET /me/homeroom/dashboard` - Homeroom teacher dashboard
+4. ✅ `GET /me/students/follow-up` - Students requiring follow-up
+5. ✅ `GET /me/notifications` - Notifications (alias)
+6. ✅ `GET /teachers` - Teachers list (accessible by students & teachers)
+
+### Compatibility:
+- ✅ 13/13 endpoints working (100%)
+- ✅ All response structures match `ApiService.kt`
+- ✅ No breaking changes to web/desktop
+- ✅ Ready for mobile app integration
+
+**Next Step**: Mobile app tinggal update `BASE_URL` dan test koneksi!
+
+
 
 ## Todo List Implementasi Mobile
 

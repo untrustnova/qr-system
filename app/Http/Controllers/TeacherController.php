@@ -287,4 +287,83 @@ class TeacherController extends Controller
 
         return response()->json($summary);
     }
+
+    /**
+     * Get students requiring follow-up (Mobile App)
+     * Returns students with concerning attendance patterns
+     */
+    public function getStudentsFollowUp(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $teacher = $user->teacherProfile;
+
+        if (! $teacher) {
+            return response()->json(['message' => 'Teacher profile not found'], 404);
+        }
+
+        // Get all students from classes taught by this teacher
+        $schedules = \App\Models\Schedule::where('teacher_id', $teacher->id)->get();
+        $classIds = $schedules->pluck('class_id')->unique();
+
+        $query = \App\Models\StudentProfile::whereIn('class_id', $classIds)
+            ->with(['user', 'classRoom']);
+
+        // Apply search filter
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->whereHas('user', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%");
+            })->orWhere('nis', 'like', "%{$search}%");
+        }
+
+        $students = $query->get()->map(function ($student) {
+            // Get attendance summary for this student
+            $attendanceSummary = \App\Models\Attendance::where('student_id', $student->id)
+                ->selectRaw('status, count(*) as count')
+                ->groupBy('status')
+                ->get()
+                ->pluck('count', 'status');
+
+            $absent = $attendanceSummary->get('absent', 0);
+            $excused = $attendanceSummary->get('excused', 0) + $attendanceSummary->get('izin', 0);
+            $sick = $attendanceSummary->get('sick', 0);
+
+            // Calculate badge based on attendance pattern
+            if ($absent >= 1) {
+                $badge = [
+                    'type' => 'danger',
+                    'label' => 'Sering Absensi',
+                ];
+                $severityScore = ($absent * 100) + ($excused * 10) + ($sick * 5);
+            } elseif ($excused > 5) {
+                $badge = [
+                    'type' => 'warning',
+                    'label' => 'Perlu Diperhatikan',
+                ];
+                $severityScore = ($excused * 10) + ($sick * 5);
+            } else {
+                $badge = [
+                    'type' => 'success',
+                    'label' => 'Aman',
+                ];
+                $severityScore = ($excused * 10) + ($sick * 5);
+            }
+
+            return [
+                'id' => $student->id,
+                'name' => $student->user->name,
+                'nis' => $student->nis,
+                'class_name' => $student->classRoom?->name ?? 'N/A',
+                'attendance_summary' => [
+                    'absent' => $absent,
+                    'excused' => $excused,
+                    'sick' => $sick,
+                ],
+                'badge' => $badge,
+                'severity_score' => $severityScore,
+            ];
+        })->sortByDesc('severity_score')->values();
+
+        return response()->json(['data' => $students]);
+    }
 }

@@ -26,14 +26,28 @@ Route::post('/auth/login', [AuthController::class, 'login'])->middleware('thrott
 Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function (): void {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
-    
+
     // Mobile-specific endpoints (backward compatible)
     Route::get('/mobile/notifications', [MobileNotificationController::class, 'index']);
+
+    // Mobile dashboard endpoints
+    Route::get('/me/dashboard/summary', [DashboardController::class, 'studentDashboard'])->middleware('role:student');
+    Route::get('/me/dashboard/teacher-summary', [DashboardController::class, 'teacherDashboard'])->middleware('role:teacher');
+    Route::get('/me/homeroom/dashboard', [DashboardController::class, 'homeroomDashboard'])->middleware('role:teacher');
+
+    // Mobile notifications alias
+    Route::get('/me/notifications', [MobileNotificationController::class, 'index']);
+
+    // Mobile follow-up endpoint
+    Route::get('/me/students/follow-up', [TeacherController::class, 'getStudentsFollowUp'])->middleware('role:teacher');
+
+    // Public teachers list (read-only for mobile app)
+    Route::get('/teachers', [TeacherController::class, 'index'])->middleware('role:student,teacher');
 
     Route::middleware('role:admin')->group(function (): void {
         Route::apiResource('majors', MajorController::class);
         Route::apiResource('classes', ClassController::class);
-        Route::apiResource('teachers', TeacherController::class);
+        Route::apiResource('teachers', TeacherController::class)->except(['index']); // index available publicly
         Route::post('/teachers/import', [TeacherController::class, 'import']);
         Route::apiResource('students', StudentController::class);
         Route::post('/students/import', [StudentController::class, 'import']);
