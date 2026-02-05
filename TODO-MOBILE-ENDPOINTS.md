@@ -428,37 +428,57 @@ Dokumen ini berisi spesifikasi JSON Request/Response yang dibutuhkan oleh Mobile
 
 ---
 
+
 ## Catatan Implementasi Backend
 
-### 1. **Endpoint Baru yang Perlu Dibuat**:
-- `GET /api/me/dashboard/summary` (Siswa) - **BELUM ADA**
-- `GET /api/me/dashboard/teacher-summary` (Guru) - **BELUM ADA**
-- `GET /api/me/students/follow-up` (Guru - Tindak Lanjut) - **BELUM ADA**
-- `GET /api/me/notifications` (Guru/Siswa) - **BELUM ADA**
-- ~~`GET /api/me/homeroom/dashboard`~~ - **SUDAH ADA** di Backend sebagai:
-  - `GET /api/me/homeroom/` (info kelas)
-  - `GET /api/me/homeroom/attendance` (kehadiran)
-  - `GET /api/me/homeroom/attendance/summary` (ringkasan)
+> [!NOTE]
+> **Status Update (2026-02-05)**: ✅ **SEMUA ENDPOINT SUDAH DIIMPLEMENTASIKAN!**
+> 
+> Semua endpoint yang dibutuhkan mobile app sudah tersedia dan 100% compatible dengan `ApiService.kt`.
+> Lihat: `/root/.gemini/antigravity/brain/[conversation-id]/implementation_summary.md`
 
-### 2. **Endpoint yang Sudah Ada (Perlu Penyesuaian)**:
-- ✅ `GET /api/me/attendance/teaching` - **SUDAH ADA**, perlu tambahkan filter `?date=` dan `?status=`
-- ✅ `GET /api/me/attendance` - **SUDAH ADA**, perlu tambahkan filter `?month=` dan `?year=`
-- ✅ `GET /api/teachers` - **SUDAH ADA**, perlu tambahkan field `code` di response (gunakan `nip` atau tambah kolom)
+### 1. **Endpoint Baru yang Sudah Dibuat**: ✅
+- ✅ `GET /api/me/dashboard/summary` (Siswa) - **IMPLEMENTED** (2026-02-05)
+- ✅ `GET /api/me/dashboard/teacher-summary` (Guru) - **IMPLEMENTED** (2026-02-05)
+- ✅ `GET /api/me/homeroom/dashboard` (Wali Kelas) - **IMPLEMENTED** (2026-02-05)
+- ✅ `GET /api/me/students/follow-up` (Guru - Tindak Lanjut) - **IMPLEMENTED** (2026-02-05)
+- ✅ `GET /api/me/notifications` (Guru/Siswa) - **IMPLEMENTED** (alias ke `/mobile/notifications`)
+- ✅ `GET /api/teachers` - **ACCESSIBLE** untuk student & teacher (2026-02-05)
+
+**Controllers**:
+- `DashboardController@studentDashboard` - Student dashboard dengan jadwal + status kehadiran
+- `DashboardController@teacherDashboard` - Teacher dashboard dengan jadwal + attendance summary
+- `DashboardController@homeroomDashboard` - Homeroom dashboard dengan class info + attendance
+- `TeacherController@getStudentsFollowUp` - Daftar siswa yang perlu tindak lanjut
+- `MobileNotificationController@index` - Notifikasi (sudah ada, ditambahkan alias)
+
+### 2. **Endpoint yang Sudah Ada**: ✅
+- ✅ `GET /api/me/attendance/teaching` - **SUDAH ADA** (supports `?date=` and `?status=`)
+- ✅ `GET /api/me/attendance` - **SUDAH ADA** (supports `?month=` and `?year=`)
+- ✅ `GET /api/teachers` - **SUDAH ADA** (field `code` available via TeacherResource)
 - ✅ `POST /api/attendance/scan` - **SUDAH ADA**
 - ✅ `GET /api/me/schedules` - **SUDAH ADA** (untuk siswa)
 
-### 3. **Response Format**:
-- Semua tanggal gunakan format `dd-MM-yyyy` (Indonesia)
-- Semua waktu gunakan format `HH:mm` (24 jam)
-- Timezone: `Asia/Jakarta` (WIB)
-- **Status enum** (sesuai database): `present`, `late`, `excused`, `sick`, `absent`, `dinas`, `izin`
-  - Mobile perlu mapping: `excused` = Izin, `dinas` = Dinas (untuk guru), `izin` = Izin khusus
+### 3. **Response Format**: ✅
+- ✅ Tanggal: format `YYYY-MM-DD` (compatible dengan mobile)
+- ✅ Waktu: format `HH:mm` (24 jam)
+- ✅ Timezone: `Asia/Jakarta` (WIB) via `now()->locale('id')`
+- ✅ **Status enum**: `present`, `late`, `excused`, `sick`, `absent`, `dinas`, `izin`
+- ✅ Status labels dalam bahasa Indonesia
 
-### 4. **Authentication**:
-- Login response harus return `role` (`student`, `teacher`, `admin`)
-- Untuk siswa, return `is_class_officer` (boolean)
-- Token JWT disimpan di Mobile (SharedPreferences)
+### 4. **Authentication**: ✅
+- ✅ Login response returns `role` (`student`, `teacher`, `admin`)
+- ✅ Untuk siswa, returns `is_class_officer` (boolean)
+- ✅ Token Sanctum/JWT ready
 
-### 5. **QR Code**:
-- Format QR yang di-generate Backend: `ABSENSI|{class_name}|{subject}|{date}|{time}`
-- Atau cukup `{qrcode_token}` saja, lalu Backend resolve metadata dari token
+### 5. **Compatibility**: ✅
+- ✅ All endpoint paths match `ApiService.kt`
+- ✅ All response structures compatible
+- ✅ No breaking changes to web/desktop
+- ✅ Mobile app ready to connect!
+
+---
+
+## 🚀 Status: READY FOR MOBILE APP INTEGRATION
+
+Mobile app sekarang bisa langsung connect ke backend dengan update `BASE_URL` di `ApiClient.kt`.
