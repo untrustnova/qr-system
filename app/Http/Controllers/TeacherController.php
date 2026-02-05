@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\TeacherResource;
 use App\Models\TeacherProfile;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -16,7 +17,7 @@ class TeacherController extends Controller
     {
         $teachers = TeacherProfile::query()->with(['user', 'homeroomClass'])->latest()->paginate();
 
-        return response()->json($teachers);
+        return TeacherResource::collection($teachers)->response();
     }
 
     public function import(Request $request): JsonResponse

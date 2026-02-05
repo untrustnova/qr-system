@@ -86,6 +86,15 @@ class QrCodeController extends Controller
             'expires_at' => $expiresAt->toIso8601String(),
         ]);
 
+        // Generate mobile-friendly format (untuk display/info saja, bukan untuk QR content)
+        $mobileFormat = sprintf(
+            'ABSENSI|%s|%s|%s|%s',
+            $schedule->class->name ?? 'Unknown',
+            $schedule->subject->name ?? 'Unknown',
+            now()->format('d-m-Y'),
+            now()->format('H:i')
+        );
+
         $svg = QrCodeFacade::format('svg')
             ->size(240)
             ->generate(json_encode($payload));
@@ -96,6 +105,16 @@ class QrCodeController extends Controller
             'qrcode' => $qr->load('schedule'),
             'qr_svg' => base64_encode($svg),
             'payload' => $payload,
+            // Tambahan untuk Mobile (backward compatible - web/desktop bisa ignore)
+            'mobile_format' => $mobileFormat,
+            'metadata' => [
+                'class_name' => $schedule->class->name ?? null,
+                'subject_name' => $schedule->subject->name ?? null,
+                'teacher_name' => $schedule->teacher->user->name ?? null,
+                'time_slot' => $schedule->timeSlot->name ?? null,
+                'start_time' => $schedule->timeSlot->start_time ?? null,
+                'end_time' => $schedule->timeSlot->end_time ?? null,
+            ],
         ], 201);
     }
 

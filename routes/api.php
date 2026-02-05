@@ -7,6 +7,7 @@ use App\Http\Controllers\ClassController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeviceController;
 use App\Http\Controllers\MajorController;
+use App\Http\Controllers\MobileNotificationController;
 use App\Http\Controllers\QrCodeController;
 use App\Http\Controllers\RoomController;
 use App\Http\Controllers\ScheduleController;
@@ -25,6 +26,9 @@ Route::post('/auth/login', [AuthController::class, 'login'])->middleware('thrott
 Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function (): void {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
+    
+    // Mobile-specific endpoints (backward compatible)
+    Route::get('/mobile/notifications', [MobileNotificationController::class, 'index']);
 
     Route::middleware('role:admin')->group(function (): void {
         Route::apiResource('majors', MajorController::class);

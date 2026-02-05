@@ -1,54 +1,167 @@
-# TODO Mobile vs Backend (Status Fitur)
+# Analisis Mobile App vs Backend System
 
-Dokumen ini merangkum fitur Android yang sudah ada di backend vs yang belum tersedia berdasarkan kode saat ini.
+## Status Saat Ini
+- **Mobile App**: Sepenuhnya menggunakan **Dummy Data** (semua Activity). Belum ada koneksi API (Retrofit/HTTP client tidak ditemukan).
+- **Backend**: Sudah memiliki struktur API dasar untuk Auth, Schedule, Attendance, tapi belum sepenuhnya sinkron dengan tampilan Mobile.
 
-## Guru
-**Sudah ada di backend**
-- Daftar jadwal harian (filter `date` di `GET /schedules`).
-- Scan QR untuk absensi (`POST /attendance/scan`).
-- Mengajukan dispensasi/sakit/izin siswa (`POST /absence-requests`).
+---
 
-**Belum ada / belum lengkap**
-- Statistik kehadiran mengajar (per guru) — belum ada endpoint statistik khusus guru.
-- Riwayat kehadiran pribadi guru lintas jadwal — belum ada endpoint khusus.
-- Tindak lanjut siswa (sering izin/alpa/sakit dari semua kelas yang diajar) — belum ada agregasi per guru.
-- Izin tidak mengajar (guru) — belum ada flow/endpoint khusus untuk izin guru.
-- Membuat izin/keterangan sakit (guru) — backend hanya untuk izin siswa (absence requests).
-- Notifikasi harian otomatis — belum ada scheduler/push endpoint di backend.
+## Fitur Mobile yang Sudah Diidentifikasi
 
-## Wali Kelas
-**Sudah ada di backend**
-- Akses jadwal & scan QR (sama seperti guru).
-- Rekap per jadwal dan ringkasan status per kelas (`GET /attendance/schedules/{schedule}`, `GET /attendance/classes/{class}/summary`).
+### 1. **Authentication** (`LoginAwal.kt`, `LoginLanjut.kt`)
+- Hardcoded credentials (siswa/guru/admin/wali/pengurus)
+- Tidak ada integrasi dengan Backend API
+- **Perlu**: Retrofit client + Token management
 
-**Belum ada / belum lengkap**
-- Riwayat kehadiran kelas per sesi (timeline semua jadwal kelas yang dibimbing) — belum ada endpoint khusus.
-- Tindak lanjut siswa khusus kelas (sering izin/alpa/sakit) — belum ada agregasi per kelas.
-- Statistik dashboard khusus wali kelas — belum ada endpoint ringkasan.
+### 2. **Dashboard Siswa** (`DashboardSiswaActivity.kt`)
+- Menampilkan:
+  - Tanggal & Waktu Live (WIB)
+  - Profil Siswa (Nama, Kelas, Status Pengurus)
+  - **Jadwal Hari Ini** dengan Status Kehadiran per mapel
+  - Jam Masuk/Pulang
+- **Backend Gap**: Tidak ada endpoint yang menggabungkan jadwal + status absensi hari ini
 
-## Siswa
-**Sudah ada di backend**
-- Riwayat presensi pribadi (`GET /me/attendance`).
-- Scan QR presensi (`POST /attendance/scan`) + device binding (`POST /me/devices`).
-- Pengurus kelas bisa generate/revoke QR (`POST /qrcodes/generate`, `POST /qrcodes/{token}/revoke`).
+### 3. **Dashboard Guru** (`DashboardGuruActivity.kt`)
+- Menampilkan:
+  - Tanggal & Waktu Live
+  - **Counter Kehadiran Siswa** (Hadir, Izin, Sakit, Alpha) - agregat semua kelas yang diajar
+  - **Jadwal Mengajar Hari Ini** (Mapel, Kelas, Jam)
+  - Navigasi ke Detail Jadwal
+- **Backend Gap**: Tidak ada endpoint untuk statistik kehadiran siswa per guru (agregat semua kelas)
 
-**Belum ada / belum lengkap**
-- Dashboard ringkas (rekap by jam/tanggal/status) — belum ada endpoint ringkas.
-- Riwayat kehadiran kelas oleh pengurus kelas (per tanggal / per mapel) — belum ada endpoint khusus.
-- Riwayat presensi siswa dengan filter tanggal — belum ada filter di `GET /me/attendance`.
-- Info pelajaran hari ini untuk siswa (kelasnya sendiri) — belum ada endpoint khusus jadwal hari ini untuk siswa.
+### 4. **Riwayat Kehadiran Guru** (`RiwayatKehadiranGuruActivity.kt`)
+- Menampilkan:
+  - Filter tanggal (DatePicker)
+  - Filter status (Hadir, Sakit, Izin, Alpha, Dinas)
+  - List riwayat mengajar dengan status
+  - Counter per status
+- **Backend**: ✅ Endpoint `GET /me/attendance/teaching` **SUDAH ADA**, perlu tambahkan filter `?date=` dan `?status=`
 
-## Admin & Waka
-**Sudah ada di backend**
-- Admin CRUD master data (majors/classes/teachers/students/subjects/rooms/time-slots/school-years/semesters).
-- Waka bulk jadwal per kelas per hari (`POST /classes/{class}/schedules/bulk`).
-- Waka list/approve/reject izin (`GET /absence-requests`, `POST /absence-requests/{id}/approve`, `POST /absence-requests/{id}/reject`).
-- Rekap & export presensi (`GET /attendance/recap`, `GET /attendance/export`).
+### 5. **Notifikasi Guru** (`NotifikasiGuruActivity.kt`)
+- Menampilkan:
+  - Notifikasi hari ini (tepat waktu, terlambat, alpha siswa, tindak lanjut, izin siswa, reminder)
+  - Tanggal realtime
+- **Backend Gap**: Tidak ada sistem notifikasi/push notification
 
-**Belum ada / belum lengkap**
-- Dashboard hasil absensi yang sudah diringkas (statistik ringkas per periode/per kelas) — baru ada rekap basic, belum ada endpoint dashboard khusus.
+### 6. **Tindak Lanjut Guru** (`TindakLanjutGuruActivity.kt`)
+- Menampilkan:
+  - List siswa yang perlu ditindak lanjuti (Alpha ≥ 1 atau Izin > 5)
+  - Search filter (nama/kelas)
+  - Badge status (Sering Absensi, Perlu Diperhatikan, Aman)
+  - Counter Alpha, Izin, Sakit per siswa
+- **Backend Gap**: Tidak ada endpoint agregasi siswa bermasalah per guru
+
+### 7. **QR Scanner** (`CameraQRActivity.kt`)
+- Scan QR Code untuk absensi
+- Format QR: `ABSENSI|Kelas|Mapel|Tanggal|Jam`
+- **Backend**: Sudah ada `POST /attendance/scan`, tapi perlu validasi format QR
+
+### 8. **Dashboard Wali Kelas** (`DashboardWaliKelasActivity.kt`)
+- Mirip Dashboard Guru, tapi fokus ke 1 kelas yang dibimbing
+- **Backend**: ✅ **SUDAH ADA** di `/me/homeroom/*`:
+  - `GET /me/homeroom/` - Info kelas bimbingan
+  - `GET /me/homeroom/attendance` - Kehadiran kelas
+  - `GET /me/homeroom/attendance/summary` - Ringkasan kehadiran
+  - `GET /me/homeroom/students` - Daftar siswa
+- **Perlu**: Gabungkan ke 1 endpoint `GET /me/homeroom/dashboard` untuk efisiensi
+
+### 9. **Riwayat Kehadiran Kelas** (Siswa & Pengurus)
+- `RiwayatKehadiranKelasSiswaActivity.kt`
+- `RiwayatKehadiranKelasPengurusActivity.kt`
+- Menampilkan riwayat kehadiran kelas (per tanggal/mapel)
+- **Backend Gap**: Endpoint untuk riwayat kelas (bukan per siswa)
+
+---
+
+## Poin Ketidaksinkronan (Mismatch)
+
+### 1. **Data Guru** (`Guru.kt`) ✅ SOLVED
+- **Mobile**: Field `kode` (String) dan `keterangan`
+- **Backend**: Tabel `teacher_profiles` hanya punya `nip`
+- **Solusi**: ✅ **IMPLEMENTED** - `TeacherResource` menambahkan virtual field `code` yang isinya sama dengan `nip`
+- **Impact**: ZERO breaking change - web/desktop tetap pakai `nip`, Mobile dapat `code`
+
+### 2. **QR Code Format** ✅ SOLVED
+- **Mobile**: `ABSENSI|Kelas|Mapel|Tanggal|Jam`
+- **Backend**: `qrcodes` table hanya simpan `token`, tidak ada metadata
+- **Solusi**: ✅ **IMPLEMENTED** - QR tetap JSON (untuk web/desktop), response ditambahkan `mobile_format` dan `metadata`
+- **Impact**: ZERO breaking change - QR code content tetap JSON, Mobile dapat metadata tambahan
+
+### 3. **Notifikasi** ✅ SOLVED
+- **Mobile**: Sudah ada UI untuk notifikasi
+- **Backend**: Tidak ada sistem notifikasi/push
+- **Solusi**: ✅ **IMPLEMENTED** - Endpoint `/mobile/notifications` generate notifikasi on-the-fly dari data attendance
+- **Impact**: ZERO breaking change - endpoint baru khusus Mobile, tidak ganggu web/desktop
+
+---
+
+## Todo List Implementasi Mobile
+
+### **Tahap 1: Setup Network Layer** (Prioritas Tinggi)
+- [ ] Tambahkan dependency Retrofit, OkHttp, Gson/Moshi di `build.gradle`
+- [ ] Buat `ApiClient.kt` (Retrofit instance dengan base URL)
+- [ ] Buat `ApiService.kt` (Interface untuk semua endpoint)
+- [ ] Buat `SessionManager.kt` (SharedPreferences untuk Token JWT)
+- [ ] Buat `AuthInterceptor.kt` (Inject token ke header)
+
+### **Tahap 2: Auth Feature** (Prioritas Tinggi)
+- [ ] Ubah `LoginLanjut.kt` untuk panggil `POST /auth/login`
+- [ ] Handle response (simpan token, user data, role)
+- [ ] Handle error (401, 422, network error)
+- [ ] Redirect ke Dashboard sesuai `role` dari API
+
+### **Tahap 3: Dashboard Siswa** (Prioritas Tinggi)
+- [ ] Hapus `generateDummyJadwal()` di `DashboardSiswaActivity.kt`
+- [ ] Panggil endpoint `GET /me/dashboard/summary` (Proposed - lihat Endpoints.md)
+- [ ] Parse response dan tampilkan di UI
+- [ ] Handle loading state & error
+
+### **Tahap 4: Dashboard Guru** (Prioritas Tinggi)
+- [ ] Hapus dummy data di `DashboardGuruActivity.kt`
+- [ ] Panggil endpoint `GET /me/dashboard/teacher-summary` (Proposed)
+- [ ] Tampilkan counter kehadiran siswa (agregat)
+- [ ] Tampilkan jadwal hari ini
+
+### **Tahap 5: QR Scanner** (Prioritas Sedang)
+- [ ] Integrasikan `CameraQRActivity.kt` dengan `POST /attendance/scan`
+- [ ] Kirim payload: `{qrcode_token, latitude, longitude}`
+- [ ] Handle response (success/error)
+- [ ] Tambahkan GPS permission & location service
+
+### **Tahap 6: Riwayat Kehadiran** (Prioritas Sedang)
+- [ ] **Guru**: Integrasikan `RiwayatKehadiranGuruActivity.kt` dengan `GET /me/attendance/teaching?date=&status=`
+- [ ] **Siswa**: Integrasikan dengan `GET /me/attendance?month=&year=`
+- [ ] Implementasi filter tanggal & status
+
+### **Tahap 7: Tindak Lanjut** (Prioritas Rendah)
+- [ ] Integrasikan `TindakLanjutGuruActivity.kt` dengan `GET /me/students/follow-up` (Proposed)
+- [ ] Tampilkan siswa bermasalah (Alpha ≥ 1 atau Izin > 5)
+
+### **Tahap 8: Notifikasi** (Prioritas Rendah)
+- [ ] Setup Firebase Cloud Messaging (FCM)
+- [ ] Integrasikan dengan Backend (endpoint untuk send notification)
+- [ ] Handle notification di foreground/background
+
+### **Tahap 9: Wali Kelas Features** (Prioritas Rendah)
+- [ ] Integrasikan `DashboardWaliKelasActivity.kt` dengan endpoint khusus wali kelas
+- [ ] Riwayat kehadiran kelas bimbingan
+
+---
 
 ## Catatan Teknis
-- Backend validasi status presensi menerima `dinas/izin`, tapi enum DB hanya `present, late, excused, sick, absent` (potensi mismatch).
-- `GET /schedules` filter `date` memakai nama hari (Monday, Tuesday, dst). Mobile perlu kirim tanggal yang valid agar backend konversi ke nama hari.
-
+1. **Timezone**: Mobile menggunakan WIB (`Asia/Jakarta`). Backend harus konsisten.
+2. **Date Format**: Mobile menggunakan `dd-MM-yyyy` dan `EEEE, d MMMM yyyy` (Indonesia). Backend harus support.
+3. **Status Enum** (sesuai database migration `2026_02_02_000001_expand_attendance_status_enum.php`):
+   - Database: `present`, `late`, `excused`, `sick`, `absent`, `dinas`, `izin`
+   - Mobile perlu mapping:
+     - `present` = Hadir
+     - `late` = Terlambat
+     - `excused` = Izin (dengan surat)
+     - `sick` = Sakit
+     - `absent` = Alpha/Tanpa Keterangan
+     - `dinas` = Dinas (khusus guru)
+     - `izin` = Izin khusus
+4. **Role Handling**: 
+   - Backend `user_type`: `admin`, `teacher`, `student`
+   - Mobile role: `siswa`, `guru`, `admin`, `wali` (teacher dengan homeroom), `pengurus` (student dengan `is_class_officer=true`)
+   - Backend harus return `role` dan `is_class_officer` di response login
