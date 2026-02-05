@@ -46,7 +46,7 @@ class AbsenceRequestController extends Controller
         $user = $request->user();
 
         if ($user->user_type === 'student') {
-            if (!optional($user->studentProfile)->is_class_officer) {
+            if (! optional($user->studentProfile)->is_class_officer) {
                 abort(403, 'Pengurus kelas saja yang boleh mengajukan');
             }
         }
@@ -66,7 +66,7 @@ class AbsenceRequestController extends Controller
                         ->exists()
                     : false);
 
-            if (!$isHomeroom && !$isTeaching) {
+            if (! $isHomeroom && ! $isTeaching) {
                 abort(403, 'Guru tidak boleh mengajukan untuk kelas ini');
             }
         }

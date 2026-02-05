@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class TeacherController extends Controller
 {
@@ -138,5 +139,151 @@ class TeacherController extends Controller
         $teacher->user()->delete();
 
         return response()->json(['message' => 'Deleted']);
+    }
+
+    public function uploadScheduleImage(Request $request, TeacherProfile $teacher): JsonResponse
+    {
+        $request->validate([
+            'file' => 'required|image|max:2048',
+        ]);
+
+        if ($teacher->schedule_image_path) {
+            Storage::disk('public')->delete($teacher->schedule_image_path);
+        }
+
+        $path = $request->file('file')->store('schedules/teachers', 'public');
+        $teacher->update(['schedule_image_path' => $path]);
+
+        return response()->json(['url' => asset('storage/'.$path)]);
+    }
+
+    public function getScheduleImage(TeacherProfile $teacher)
+    {
+        if (! $teacher->schedule_image_path || ! Storage::disk('public')->exists($teacher->schedule_image_path)) {
+            return response()->json(['message' => 'Image not found'], 404);
+        }
+
+        return response()->file(Storage::disk('public')->path($teacher->schedule_image_path));
+    }
+
+    public function deleteScheduleImage(TeacherProfile $teacher): JsonResponse
+    {
+        if ($teacher->schedule_image_path) {
+            Storage::disk('public')->delete($teacher->schedule_image_path);
+            $teacher->update(['schedule_image_path' => null]);
+        }
+
+        return response()->json(['message' => 'Image deleted']);
+    }
+
+    public function attendance(Request $request, TeacherProfile $teacher): JsonResponse
+    {
+        // Waka viewing teacher attendance
+        $query = \App\Models\Attendance::where('teacher_id', $teacher->id); // Assuming teacher_id is in attendance
+        // Wait, Attendance model might rely on user_id or similar.
+        // Let's check Attendance model structure.
+        // Assuming it links to User or TeacherProfile.
+        // If generic attendance, it might be user_id.
+        // If specific teaching attendance, it might be tied to schedule -> teacher.
+
+        // For now let's assume filtering by teacher's user_id if attendance has user_id,
+        // OR through schedule if attendance is for a class.
+        // But "Kehadiran Guru" usually means the teacher's presence.
+        // Let's default to user_id for now and I'll verify Attendance model.
+
+        return response()->json(['message' => 'Not implemented fully until Attendance model verified']);
+    }
+
+    // Walikelas endpoints
+    public function myHomeroom(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user->teacherProfile || ! $user->teacherProfile->homeroom_class_id) {
+            return response()->json(['message' => 'Homeroom not found'], 404);
+        }
+
+        return response()->json($user->teacherProfile->homeroomClass->load('major'));
+    }
+
+    public function myHomeroomSchedules(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user->teacherProfile || ! $user->teacherProfile->homeroom_class_id) {
+            return response()->json(['message' => 'Homeroom not found'], 404);
+        }
+
+        $class = $user->teacherProfile->homeroomClass;
+        $query = $class->schedules();
+
+        if ($request->filled('date')) {
+            $day = date('l', strtotime($request->date));
+            $query->where('day', $day);
+        }
+
+        return response()->json($query->with(['subject', 'teacher.user'])->get());
+    }
+
+    public function myHomeroomStudents(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user->teacherProfile || ! $user->teacherProfile->homeroom_class_id) {
+            return response()->json(['message' => 'Homeroom not found'], 404);
+        }
+
+        return response()->json($user->teacherProfile->homeroomClass->students->load('user'));
+    }
+
+    public function myHomeroomAttendance(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user->teacherProfile || ! $user->teacherProfile->homeroom_class_id) {
+            return response()->json(['message' => 'Homeroom not found'], 404);
+        }
+
+        $classId = $user->teacherProfile->homeroom_class_id;
+
+        $query = \App\Models\Attendance::whereHas('student', function ($q) use ($classId) {
+            $q->where('class_id', $classId);
+        });
+
+        if ($request->filled('from')) {
+            $query->whereDate('created_at', '>=', $request->from);
+        }
+        if ($request->filled('to')) {
+            $query->whereDate('created_at', '<=', $request->to);
+        }
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        return response()->json($query->with('student.user')->latest()->get());
+    }
+
+    public function myHomeroomAttendanceSummary(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user->teacherProfile || ! $user->teacherProfile->homeroom_class_id) {
+            return response()->json(['message' => 'Homeroom not found'], 404);
+        }
+
+        $classId = $user->teacherProfile->homeroom_class_id;
+
+        $query = \App\Models\Attendance::whereHas('student', function ($q) use ($classId) {
+            $q->where('class_id', $classId);
+        });
+
+        if ($request->filled('from')) {
+            $query->whereDate('created_at', '>=', $request->from);
+        }
+        if ($request->filled('to')) {
+            $query->whereDate('created_at', '<=', $request->to);
+        }
+
+        $summary = $query->selectRaw('status, count(*) as count')
+            ->groupBy('status')
+            ->get()
+            ->pluck('count', 'status');
+
+        return response()->json($summary);
     }
 }

@@ -28,19 +28,19 @@ class AuthController extends Controller
             ->orWhere('email', $data['login'])
             ->first();
 
-        if (!$user || !Hash::check($data['password'], $user->password)) {
+        if (! $user || ! Hash::check($data['password'], $user->password)) {
             throw ValidationException::withMessages([
                 'login' => ['Invalid credentials'],
             ]);
         }
 
-        if (!$user->active) {
+        if (! $user->active) {
             throw ValidationException::withMessages([
                 'login' => ['Account inactive'],
             ]);
         }
 
-        if ($user->user_type === 'admin' && !$user->adminProfile) {
+        if ($user->user_type === 'admin' && ! $user->adminProfile) {
             $user->adminProfile()->create(['type' => 'waka']);
         }
 

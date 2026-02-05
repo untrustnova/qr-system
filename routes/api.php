@@ -1,21 +1,22 @@
 <?php
 
-use App\Http\Controllers\AuthController;
-use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AbsenceRequestController;
+use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ClassController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeviceController;
 use App\Http\Controllers\MajorController;
 use App\Http\Controllers\QrCodeController;
+use App\Http\Controllers\RoomController;
 use App\Http\Controllers\ScheduleController;
-use App\Http\Controllers\WhatsAppController;
 use App\Http\Controllers\SchoolYearController;
 use App\Http\Controllers\SemesterController;
-use App\Http\Controllers\RoomController;
-use App\Http\Controllers\SubjectController;
-use App\Http\Controllers\TimeSlotController;
 use App\Http\Controllers\StudentController;
+use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\TeacherController;
+use App\Http\Controllers\TimeSlotController;
+use App\Http\Controllers\WhatsAppController;
 // use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -42,6 +43,8 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
         Route::apiResource('time-slots', TimeSlotController::class);
         Route::post('/wa/send-text', [WhatsAppController::class, 'sendText']);
         Route::post('/wa/send-media', [WhatsAppController::class, 'sendMedia']);
+        Route::get('/admin/summary', [DashboardController::class, 'adminSummary']);
+        Route::get('/attendance/summary', [DashboardController::class, 'attendanceSummary']);
     });
 
     Route::middleware(['role:admin', 'admin-type:waka'])->group(function (): void {
@@ -53,6 +56,13 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
         Route::post('/attendance/manual', [AttendanceController::class, 'manual']);
         Route::get('/waka/attendance/summary', [AttendanceController::class, 'wakaSummary']);
         Route::get('/students/absences', [AttendanceController::class, 'studentsAbsences']);
+
+        Route::post('/teachers/{teacher}/schedule-image', [TeacherController::class, 'uploadScheduleImage']);
+        Route::delete('/teachers/{teacher}/schedule-image', [TeacherController::class, 'deleteScheduleImage']);
+        Route::get('/teachers/{teacher}/attendance', [TeacherController::class, 'attendance']);
+
+        Route::post('/classes/{class}/schedule-image', [ClassController::class, 'uploadScheduleImage']);
+        Route::delete('/classes/{class}/schedule-image', [ClassController::class, 'deleteScheduleImage']);
     });
 
     Route::middleware('role:admin,teacher')->group(function (): void {
@@ -75,6 +85,7 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
         Route::get('/attendance/schedules/{schedule}/summary', [AttendanceController::class, 'summaryBySchedule']);
         Route::get('/attendance/classes/{class}/summary', [AttendanceController::class, 'summaryByClass']);
         Route::post('/attendance/{attendance}/attachments', [AttendanceController::class, 'attach']);
+        Route::get('/attendance/{attendance}/document', [AttendanceController::class, 'getDocument']);
         Route::post('/attendance/{attendance}/void', [AttendanceController::class, 'void']);
     });
 
@@ -85,6 +96,14 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
         Route::get('/classes/{class}/attendance', [AttendanceController::class, 'classAttendanceByDate']);
         Route::get('/classes/{class}/students/attendance-summary', [AttendanceController::class, 'classStudentsSummary']);
         Route::get('/classes/{class}/students/absences', [AttendanceController::class, 'classStudentsAbsences']);
+
+        Route::prefix('me/homeroom')->group(function () {
+            Route::get('/', [TeacherController::class, 'myHomeroom']);
+            Route::get('/schedules', [TeacherController::class, 'myHomeroomSchedules']);
+            Route::get('/attendance', [TeacherController::class, 'myHomeroomAttendance']);
+            Route::get('/attendance/summary', [TeacherController::class, 'myHomeroomAttendanceSummary']);
+            Route::get('/students', [TeacherController::class, 'myHomeroomStudents']);
+        });
     });
 
     Route::middleware('role:student')->group(function (): void {
@@ -102,5 +121,16 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
     Route::middleware(['role:student', 'class-officer'])->group(function (): void {
         Route::post('/qrcodes/generate', [QrCodeController::class, 'generate']);
         Route::post('/qrcodes/{token}/revoke', [QrCodeController::class, 'revoke']);
+
+        Route::prefix('me/class')->group(function () {
+            Route::get('/', [ClassController::class, 'myClass']);
+            Route::get('/schedules', [ClassController::class, 'myClassSchedules']);
+            Route::get('/attendance', [ClassController::class, 'myClassAttendance']);
+        });
+    });
+
+    Route::middleware('role:admin,teacher,student')->group(function () {
+        Route::get('/teachers/{teacher}/schedule-image', [TeacherController::class, 'getScheduleImage']);
+        Route::get('/classes/{class}/schedule-image', [ClassController::class, 'getScheduleImage']);
     });
 });

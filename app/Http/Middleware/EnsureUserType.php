@@ -16,11 +16,11 @@ class EnsureUserType
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
             return new JsonResponse(['message' => 'Unauthenticated.'], Response::HTTP_UNAUTHORIZED);
         }
 
-        if (!in_array($user->user_type, $roles, true)) {
+        if (! in_array($user->user_type, $roles, true)) {
             return new JsonResponse(['message' => 'Forbidden for role '.$user->user_type], Response::HTTP_FORBIDDEN);
         }
 

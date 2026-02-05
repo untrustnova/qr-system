@@ -28,11 +28,11 @@ class WebAuthController extends Controller
             ->orWhere('email', $data['login'])
             ->first();
 
-        if (!$user || !Hash::check($data['password'], $user->password)) {
+        if (! $user || ! Hash::check($data['password'], $user->password)) {
             return back()->withErrors(['login' => 'Invalid credentials'])->withInput();
         }
 
-        if (!$user->active) {
+        if (! $user->active) {
             return back()->withErrors(['login' => 'Account inactive'])->withInput();
         }
 

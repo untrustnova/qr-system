@@ -92,7 +92,7 @@ class ScheduleController extends Controller
 
     public function me(Request $request): JsonResponse
     {
-        if ($request->user()->user_type !== 'student' || !$request->user()->studentProfile) {
+        if ($request->user()->user_type !== 'student' || ! $request->user()->studentProfile) {
             abort(403, 'Hanya untuk siswa');
         }
 
@@ -132,12 +132,12 @@ class ScheduleController extends Controller
             'year' => ['required', 'integer'],
         ]);
 
-        if (isset($data['subject_id']) && !isset($data['subject_name'])) {
+        if (isset($data['subject_id']) && ! isset($data['subject_name'])) {
             $subject = Subject::find($data['subject_id']);
             $data['subject_name'] = $subject?->name;
         }
 
-        if (!isset($data['title'])) {
+        if (! isset($data['title'])) {
             $data['title'] = $data['subject_name'] ?? 'Mata Pelajaran';
         }
 
@@ -171,12 +171,12 @@ class ScheduleController extends Controller
             'year' => ['sometimes', 'integer'],
         ]);
 
-        if (isset($data['subject_id']) && !isset($data['subject_name'])) {
+        if (isset($data['subject_id']) && ! isset($data['subject_name'])) {
             $subject = Subject::find($data['subject_id']);
             $data['subject_name'] = $subject?->name;
         }
 
-        if (array_key_exists('subject_name', $data) && !isset($data['title'])) {
+        if (array_key_exists('subject_name', $data) && ! isset($data['title'])) {
             $data['title'] = $data['subject_name'];
         }
 
@@ -225,7 +225,7 @@ class ScheduleController extends Controller
             foreach ($data['items'] as $item) {
                 $subjectName = $item['subject_name'] ?? null;
 
-                if (isset($item['subject_id']) && !$subjectName) {
+                if (isset($item['subject_id']) && ! $subjectName) {
                     $subject = Subject::find($item['subject_id']);
                     $subjectName = $subject?->name;
                 }
@@ -296,7 +296,7 @@ class ScheduleController extends Controller
 
     private function resolvePerPage(Request $request): ?int
     {
-        if (!$request->filled('per_page') && !$request->filled('page')) {
+        if (! $request->filled('per_page') && ! $request->filled('page')) {
             return null;
         }
 

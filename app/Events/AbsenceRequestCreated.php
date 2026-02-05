@@ -12,9 +12,7 @@ class AbsenceRequestCreated implements ShouldBroadcast
 {
     use Dispatchable, SerializesModels;
 
-    public function __construct(public AbsenceRequest $absenceRequest)
-    {
-    }
+    public function __construct(public AbsenceRequest $absenceRequest) {}
 
     public function broadcastOn(): array
     {

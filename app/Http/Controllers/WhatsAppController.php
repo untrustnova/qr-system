@@ -48,7 +48,7 @@ class WhatsAppController extends Controller
         $baseUrl = config('services.whatsapp.base_url');
         $token = config('services.whatsapp.token');
 
-        if (!$baseUrl) {
+        if (! $baseUrl) {
             return response()->json([
                 'message' => 'WhatsApp provider not configured',
             ], 501);
@@ -62,11 +62,12 @@ class WhatsAppController extends Controller
 
         $response = $client->post(rtrim($baseUrl, '/').'/'.$endpoint, $payload);
 
-        if (!$response->successful()) {
+        if (! $response->successful()) {
             Log::warning('whatsapp.send.failed', [
                 'endpoint' => $endpoint,
                 'status' => $response->status(),
             ]);
+
             return response()->json([
                 'message' => 'Failed to send WhatsApp message',
                 'error' => $response->json() ?? $response->body(),
@@ -89,7 +90,7 @@ class WhatsAppController extends Controller
             return $mediaBase64;
         }
 
-        $mimeTypes = new MimeTypes();
+        $mimeTypes = new MimeTypes;
         $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
         $mimes = $mimeTypes->getMimeTypes($extension);
         $mime = $mimes[0] ?? 'application/octet-stream';

@@ -13,13 +13,13 @@ class EnsureAdminType
     {
         $user = $request->user();
 
-        if (!$user || $user->user_type !== 'admin') {
+        if (! $user || $user->user_type !== 'admin') {
             return new JsonResponse(['message' => 'Forbidden'], Response::HTTP_FORBIDDEN);
         }
 
         $adminType = optional($user->adminProfile)->type;
 
-        if (!in_array($adminType, $types, true)) {
+        if (! in_array($adminType, $types, true)) {
             return new JsonResponse(['message' => 'Forbidden for admin type '.$adminType], Response::HTTP_FORBIDDEN);
         }
 

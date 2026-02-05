@@ -4,7 +4,6 @@ use App\Models\AbsenceRequest;
 use App\Models\Classes;
 use App\Models\Schedule;
 use App\Models\StudentProfile;
-use App\Models\TeacherProfile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;

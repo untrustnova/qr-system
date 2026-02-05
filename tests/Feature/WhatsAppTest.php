@@ -15,7 +15,7 @@ it('sends whatsapp text via configured provider', function () {
     ]);
 
     Http::fake([
-        'https://wa.test/send-text' => Http::response(['ok' => true], 200),
+        'https://wa.test/send-message' => Http::response(['ok' => true], 200),
     ]);
 
     $admin = User::create([
@@ -35,19 +35,19 @@ it('sends whatsapp text via configured provider', function () {
         'to' => '6281234567890',
         'message' => 'Halo? apakah ini bisa?. Kalo bisa harusnya ini menampilkan apa gitu',
     ]);
-    
+
     $response->assertStatus(200)
         ->assertJsonFragment(['message' => 'Sent']);
 
-    // Verify that the HTTP request was sent with correct headers and payloadq
+    // Verify that the HTTP request was sent with correct headers and payload
     Http::assertSent(function ($request) {
-        return $request->url() === 'https://wa.test/send-text'
+        return $request->url() === 'https://wa.test/send-message'
             && $request->hasHeaders([
                 'Authorization' => 'Bearer test-token',
                 'Accept' => 'application/json',
             ]);
 
-            // postJson payload
-            // $data = $request->da
+        // postJson payload
+        // $data = $request->da
     });
 });

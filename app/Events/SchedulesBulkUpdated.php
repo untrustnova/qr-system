@@ -17,8 +17,7 @@ class SchedulesBulkUpdated implements ShouldBroadcast
         public int $semester,
         public int $year,
         public int $count
-    ) {
-    }
+    ) {}
 
     public function broadcastOn(): array
     {

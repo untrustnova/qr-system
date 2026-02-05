@@ -85,3 +85,48 @@ Dokumen ini berisi daftar endpoint yang disarankan agar fitur Web/Desktop berjal
 ## Catatan
 - Semua endpoint di atas perlu policy role yang jelas (admin/teacher/student/waka).
 - Disarankan tambahkan filter tanggal di endpoint list yang sudah ada agar frontend tidak terlalu berat.
+
+---
+
+## Tambahan Khusus Webta
+Bagian ini melengkapi kebutuhan Webta (frontend web) yang belum tercakup di daftar atas.
+
+### QR (Pengurus Kelas ↔ Guru)
+1) **Generate QR token per jadwal (pengurus kelas)**
+- `POST /me/class/qr-token`
+- Payload: `schedule_id`, `expires_in` (optional)
+- Response: `{ token, expires_at }`
+
+2) **Scan/verify QR (guru)**
+- `POST /attendance/scan`
+- Payload: `token`
+- Response: attendance object + status
+
+3) **Revoke QR token (opsional)**
+- `POST /qrcodes/{token}/revoke`
+
+### Dokumen Bukti Izin/Sakit
+1) **Upload bukti kehadiran**
+- `POST /attendance/{attendance}/document`
+- Form-data: `file`, `type`, `note` (optional)
+
+2) **Ambil/preview bukti**
+- `GET /attendance/{attendance}/document`
+
+### Jadwal dalam Bentuk Gambar (Waka/Siswa)
+1) **Upload gambar jadwal guru**
+- `POST /teachers/{teacher}/schedule-image`
+- Form-data: `file`
+
+2) **Hapus gambar jadwal guru**
+- `DELETE /teachers/{teacher}/schedule-image`
+
+3) **Upload gambar jadwal kelas**
+- `POST /classes/{class}/schedule-image`
+- Form-data: `file`
+
+4) **Hapus gambar jadwal kelas**
+- `DELETE /classes/{class}/schedule-image`
+
+5) **Ambil gambar jadwal kelas (untuk siswa)**
+- `GET /classes/{class}/schedule-image`

@@ -4,20 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Events\AttendanceRecorded;
 use App\Models\Attendance;
-use App\Models\AttendanceAttachment;
 use App\Models\Classes;
 use App\Models\Qrcode;
 use App\Models\Schedule;
 use App\Models\StudentProfile;
 use App\Models\TeacherProfile;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AttendanceController extends Controller
 {
@@ -30,7 +28,7 @@ class AttendanceController extends Controller
 
         $qr = Qrcode::with('schedule')->where('token', $data['token'])->firstOrFail();
 
-        if (!$qr->is_active || $qr->isExpired()) {
+        if (! $qr->is_active || $qr->isExpired()) {
             return response()->json(['message' => 'QR tidak aktif atau sudah kadaluarsa'], 422);
         }
 
@@ -45,21 +43,21 @@ class AttendanceController extends Controller
             return response()->json(['message' => 'QR hanya untuk guru'], 403);
         }
 
-        if ($user->user_type === 'student' && !$user->studentProfile) {
+        if ($user->user_type === 'student' && ! $user->studentProfile) {
             return response()->json(['message' => 'Profil siswa tidak ditemukan'], 422);
         }
 
-        if ($user->user_type === 'teacher' && !$user->teacherProfile) {
+        if ($user->user_type === 'teacher' && ! $user->teacherProfile) {
             return response()->json(['message' => 'Profil guru tidak ditemukan'], 422);
         }
 
         if ($user->user_type === 'student') {
-            if (!$data['device_id'] ?? null) {
+            if (! $data['device_id'] ?? null) {
                 return response()->json(['message' => 'Device belum terdaftar'], 422);
             }
 
             $device = $user->devices()->where('id', $data['device_id'])->where('active', true)->first();
-            if (!$device) {
+            if (! $device) {
                 return response()->json(['message' => 'Device tidak valid'], 422);
             }
 
@@ -99,7 +97,7 @@ class AttendanceController extends Controller
         ]);
 
         // dispatch event after creation to ensure ID is available
-        AttendanceRecorded::dispatch($attendance); 
+        AttendanceRecorded::dispatch($attendance);
 
         Log::info('attendance.recorded', [
             'attendance_id' => $attendance->id,
@@ -113,7 +111,7 @@ class AttendanceController extends Controller
 
     public function me(Request $request): JsonResponse
     {
-        if ($request->user()->user_type !== 'student' || !$request->user()->studentProfile) {
+        if ($request->user()->user_type !== 'student' || ! $request->user()->studentProfile) {
             abort(403, 'Hanya untuk siswa');
         }
 
@@ -143,7 +141,7 @@ class AttendanceController extends Controller
 
     public function summaryMe(Request $request): JsonResponse
     {
-        if ($request->user()->user_type !== 'student' || !$request->user()->studentProfile) {
+        if ($request->user()->user_type !== 'student' || ! $request->user()->studentProfile) {
             abort(403, 'Hanya untuk siswa');
         }
 
@@ -183,7 +181,7 @@ class AttendanceController extends Controller
 
     public function meTeaching(Request $request): JsonResponse
     {
-        if ($request->user()->user_type !== 'teacher' || !$request->user()->teacherProfile) {
+        if ($request->user()->user_type !== 'teacher' || ! $request->user()->teacherProfile) {
             abort(403, 'Hanya untuk guru');
         }
 
@@ -217,7 +215,7 @@ class AttendanceController extends Controller
 
     public function summaryTeaching(Request $request): JsonResponse
     {
-        if ($request->user()->user_type !== 'teacher' || !$request->user()->teacherProfile) {
+        if ($request->user()->user_type !== 'teacher' || ! $request->user()->teacherProfile) {
             abort(403, 'Hanya untuk guru');
         }
 
@@ -253,7 +251,7 @@ class AttendanceController extends Controller
 
     public function studentsAttendanceSummary(Request $request): JsonResponse
     {
-        if ($request->user()->user_type !== 'teacher' || !$request->user()->teacherProfile) {
+        if ($request->user()->user_type !== 'teacher' || ! $request->user()->teacherProfile) {
             abort(403, 'Hanya untuk guru');
         }
 
@@ -305,6 +303,7 @@ class AttendanceController extends Controller
 
         $grouped = $raw->groupBy('student_id')->map(function ($rows): array {
             $totals = $rows->pluck('total', 'status')->all();
+
             return [
                 'student_id' => $rows->first()->student_id,
                 'totals' => $totals,
@@ -319,11 +318,12 @@ class AttendanceController extends Controller
                         return true;
                     }
                 }
+
                 return false;
             })->values();
         }
 
-        if (!$perPage) {
+        if (! $perPage) {
             $studentIds = $grouped->pluck('student_id')->all();
         }
 
@@ -342,6 +342,7 @@ class AttendanceController extends Controller
 
         if ($perPage) {
             $studentIdsPage->setCollection($response->values());
+
             return response()->json($studentIdsPage);
         }
 
@@ -350,7 +351,7 @@ class AttendanceController extends Controller
 
     public function classAttendanceByDate(Request $request, Classes $class): JsonResponse
     {
-        if ($request->user()->user_type !== 'teacher' || !$request->user()->teacherProfile) {
+        if ($request->user()->user_type !== 'teacher' || ! $request->user()->teacherProfile) {
             abort(403, 'Hanya untuk guru');
         }
 
@@ -398,7 +399,7 @@ class AttendanceController extends Controller
 
     public function classStudentsSummary(Request $request, Classes $class): JsonResponse
     {
-        if ($request->user()->user_type !== 'teacher' || !$request->user()->teacherProfile) {
+        if ($request->user()->user_type !== 'teacher' || ! $request->user()->teacherProfile) {
             abort(403, 'Hanya untuk guru');
         }
 
@@ -464,11 +465,12 @@ class AttendanceController extends Controller
                         return true;
                     }
                 }
+
                 return false;
             })->values();
         }
 
-        if (!$perPage) {
+        if (! $perPage) {
             $studentIds = $grouped->pluck('student_id')->all();
         }
 
@@ -487,6 +489,7 @@ class AttendanceController extends Controller
 
         if ($perPage) {
             $studentIdsPage->setCollection($response->values());
+
             return response()->json($studentIdsPage);
         }
 
@@ -495,7 +498,7 @@ class AttendanceController extends Controller
 
     public function classStudentsAbsences(Request $request, Classes $class): JsonResponse
     {
-        if ($request->user()->user_type !== 'teacher' || !$request->user()->teacherProfile) {
+        if ($request->user()->user_type !== 'teacher' || ! $request->user()->teacherProfile) {
             abort(403, 'Hanya untuk guru');
         }
 
@@ -557,6 +560,7 @@ class AttendanceController extends Controller
             });
 
             $studentIdsPage->setCollection($response);
+
             return response()->json($studentIdsPage);
         }
 
@@ -587,6 +591,7 @@ class AttendanceController extends Controller
             });
 
             $studentIdsPage->setCollection($response);
+
             return response()->json($studentIdsPage);
         }
 
@@ -645,6 +650,7 @@ class AttendanceController extends Controller
 
         if ($perPage) {
             $teachers->setCollection($items);
+
             return response()->json([
                 'date' => $date,
                 'items' => $teachers,
@@ -841,7 +847,7 @@ class AttendanceController extends Controller
             $teacherId = optional($request->user()->teacherProfile)->id;
             $ownsSchedules = $class->schedules()->where('teacher_id', $teacherId)->exists();
             $isHomeroom = optional($class->homeroomTeacher)->id === $teacherId;
-            if (!$ownsSchedules && !$isHomeroom) {
+            if (! $ownsSchedules && ! $isHomeroom) {
                 abort(403, 'Tidak boleh melihat rekap kelas ini');
             }
         }
@@ -874,6 +880,22 @@ class AttendanceController extends Controller
             'attachment' => $attachment,
             'url' => $this->signedUrl($attachment->path),
         ], 201);
+    }
+
+    public function getDocument(Request $request, Attendance $attendance): JsonResponse
+    {
+        $attachment = $attendance->attachments()->latest()->first();
+
+        if (! $attachment) {
+            return response()->json(['message' => 'Document not found'], 404);
+        }
+
+        return response()->json([
+            'id' => $attachment->id,
+            'url' => $this->signedUrl($attachment->path),
+            'mime_type' => $attachment->mime_type,
+            'original_name' => $attachment->original_name,
+        ]);
     }
 
     protected function storeAttachment(UploadedFile $file): string
@@ -1008,7 +1030,7 @@ class AttendanceController extends Controller
 
     private function resolvePerPage(Request $request): ?int
     {
-        if (!$request->filled('per_page') && !$request->filled('page')) {
+        if (! $request->filled('per_page') && ! $request->filled('page')) {
             return null;
         }
 

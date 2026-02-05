@@ -11,9 +11,7 @@ class QrSessionCreated implements ShouldBroadcast
 {
     use SerializesModels;
 
-    public function __construct(public Qrcode $qrcode)
-    {
-    }
+    public function __construct(public Qrcode $qrcode) {}
 
     public function broadcastOn(): array
     {

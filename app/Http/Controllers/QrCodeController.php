@@ -40,7 +40,7 @@ class QrCodeController extends Controller
             $isOwner = $schedule->teacher_id === $teacherId;
             $isHomeroom = optional($schedule->class?->homeroomTeacher)->id === $teacherId;
 
-            if (!$isOwner && !$isHomeroom) {
+            if (! $isOwner && ! $isHomeroom) {
                 abort(403, 'Guru tidak boleh membuat QR untuk jadwal lain');
             }
         }
@@ -48,7 +48,7 @@ class QrCodeController extends Controller
         if ($user->user_type === 'student') {
             $studentProfile = $user->studentProfile;
 
-            if (!$studentProfile || !$studentProfile->is_class_officer) {
+            if (! $studentProfile || ! $studentProfile->is_class_officer) {
                 abort(403, 'Pengurus kelas saja yang boleh membuat QR');
             }
 
@@ -108,7 +108,7 @@ class QrCodeController extends Controller
             $isOwner = $qr->schedule?->teacher_id === $teacherId;
             $isHomeroom = optional($qr->schedule?->class?->homeroomTeacher)->id === $teacherId;
 
-            if (!$isOwner && !$isHomeroom) {
+            if (! $isOwner && ! $isHomeroom) {
                 abort(403, 'Guru tidak boleh mencabut QR ini');
             }
         }
@@ -116,7 +116,7 @@ class QrCodeController extends Controller
         if ($request->user()->user_type === 'student') {
             $studentProfile = $request->user()->studentProfile;
 
-            if (!$studentProfile || !$studentProfile->is_class_officer) {
+            if (! $studentProfile || ! $studentProfile->is_class_officer) {
                 abort(403, 'Pengurus kelas saja yang boleh mencabut QR');
             }
 

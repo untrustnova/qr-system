@@ -13,11 +13,11 @@ class EnsureClassOfficer
     {
         $user = $request->user();
 
-        if (!$user || $user->user_type !== 'student') {
+        if (! $user || $user->user_type !== 'student') {
             return new JsonResponse(['message' => 'Forbidden'], Response::HTTP_FORBIDDEN);
         }
 
-        if (!optional($user->studentProfile)->is_class_officer) {
+        if (! optional($user->studentProfile)->is_class_officer) {
             return new JsonResponse(['message' => 'Forbidden for non class officer'], Response::HTTP_FORBIDDEN);
         }
 
