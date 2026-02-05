@@ -13,6 +13,7 @@ class TeacherProfile extends Model
         'nip',
         'homeroom_class_id',
         'subject',
+        'schedule_image_path',
     ];
 
     public function user(): BelongsTo

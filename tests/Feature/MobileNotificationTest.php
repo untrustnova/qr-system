@@ -18,7 +18,7 @@ test('teacher receives teaching notifications', function () {
         'class_id' => $class->id,
         'semester' => 1,
         'year' => 2026,
-        'subject_name' => 'Physics'
+        'subject_name' => 'Physics',
     ]);
 
     // Teacher attended
@@ -29,7 +29,7 @@ test('teacher receives teaching notifications', function () {
         'status' => 'present',
         'date' => now(),
         'checked_in_at' => now(),
-        'source' => 'manual'
+        'source' => 'manual',
     ]);
 
     $response = $this->actingAs($teacherUser)
@@ -54,7 +54,7 @@ test('student receives attendance notifications', function () {
         'class_id' => $class->id,
         'semester' => 1,
         'year' => 2026,
-        'subject_name' => 'Physics'
+        'subject_name' => 'Physics',
     ]);
 
     // Student absent
@@ -64,7 +64,7 @@ test('student receives attendance notifications', function () {
         'schedule_id' => $schedule->id,
         'status' => 'absent',
         'date' => now(),
-        'source' => 'system'
+        'source' => 'system',
     ]);
 
     $response = $this->actingAs($studentUser)

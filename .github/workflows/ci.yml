@@ -55,13 +55,12 @@ jobs:
         run: |
           cp .env.example .env
           php artisan key:generate
-          touch database/database.sqlite
 
       - name: Execute Tests (Feature & Unit)
         env:
           APP_ENV: testing
           DB_CONNECTION: sqlite
-          DB_DATABASE: database/database.sqlite
+          DB_DATABASE: ":memory:"
           CACHE_STORE: redis
           QUEUE_CONNECTION: redis
           SESSION_DRIVER: array

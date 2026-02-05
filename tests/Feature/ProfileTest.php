@@ -7,18 +7,18 @@ use Illuminate\Support\Facades\Storage;
 
 test('user can change password', function () {
     $user = User::factory()->create([
-        'password' => Hash::make('old-password')
+        'password' => Hash::make('old-password'),
     ]);
 
     $response = $this->actingAs($user)
         ->postJson('/api/auth/change-password', [
             'current_password' => 'old-password',
             'new_password' => 'new-password',
-            'new_password_confirmation' => 'new-password'
+            'new_password_confirmation' => 'new-password',
         ]);
 
     $response->assertOk();
-    
+
     $this->assertTrue(Hash::check('new-password', $user->fresh()->password));
 });
 
@@ -28,7 +28,7 @@ test('user can update profile', function () {
     $response = $this->actingAs($user)
         ->postJson('/api/me/profile', [
             'email' => 'new@example.com',
-            'phone' => '08123456789'
+            'phone' => '08123456789',
         ]);
 
     $response->assertOk();
@@ -37,8 +37,8 @@ test('user can update profile', function () {
 });
 
 test('teacher can upload schedule image', function () {
-    Storage::fake('public');
-    
+    Storage::fake('local');
+
     $teacherUser = User::factory()->create(['user_type' => 'teacher']);
     $teacher = $teacherUser->teacherProfile()->create(['nip' => 'T1']);
 
@@ -46,11 +46,11 @@ test('teacher can upload schedule image', function () {
 
     $response = $this->actingAs($teacherUser)
         ->postJson('/api/me/schedule-image', [
-            'file' => $file
+            'file' => $file,
         ]);
 
     $response->assertOk();
-    
+
     $this->assertNotNull($teacher->fresh()->schedule_image_path);
-    Storage::disk('public')->assertExists($teacher->fresh()->schedule_image_path);
+    Storage::disk('local')->assertExists($teacher->fresh()->schedule_image_path);
 });

@@ -2,8 +2,6 @@
 
 use App\Models\Classes;
 use App\Models\Schedule;
-use App\Models\StudentProfile;
-use App\Models\TeacherProfile;
 use App\Models\User;
 
 beforeEach(function () {
@@ -12,7 +10,7 @@ beforeEach(function () {
 
 test('admin can view admin summary', function () {
     $admin = User::factory()->create(['user_type' => 'admin']);
-    
+
     $response = $this->actingAs($admin)
         ->getJson('/api/admin/summary');
 
@@ -22,7 +20,7 @@ test('admin can view admin summary', function () {
             'teachers_count',
             'classes_count',
             'majors_count',
-            'rooms_count'
+            'rooms_count',
         ]);
 });
 
@@ -30,7 +28,7 @@ test('student can view dashboard summary', function () {
     $studentUser = User::factory()->create(['user_type' => 'student']);
     $student = $studentUser->studentProfile()->create([
         'nis' => '12345',
-        'class_id' => $this->class->id
+        'class_id' => $this->class->id,
     ]);
 
     // Create a schedule for today
@@ -43,7 +41,7 @@ test('student can view dashboard summary', function () {
         'class_id' => $this->class->id,
         'semester' => 1,
         'year' => 2026,
-        'subject_name' => 'Math'
+        'subject_name' => 'Math',
     ]);
 
     $response = $this->actingAs($studentUser)
@@ -53,7 +51,7 @@ test('student can view dashboard summary', function () {
         ->assertJsonStructure([
             'date',
             'student',
-            'schedule_today'
+            'schedule_today',
         ])
         ->assertJsonPath('student.nis', '12345');
 });
@@ -71,7 +69,7 @@ test('teacher can view teacher dashboard summary', function () {
         'class_id' => $this->class->id,
         'semester' => 1,
         'year' => 2026,
-        'subject_name' => 'Physics'
+        'subject_name' => 'Physics',
     ]);
 
     $response = $this->actingAs($teacherUser)
@@ -81,7 +79,7 @@ test('teacher can view teacher dashboard summary', function () {
         ->assertJsonStructure([
             'teacher',
             'attendance_summary',
-            'schedule_today'
+            'schedule_today',
         ]);
 });
 
@@ -89,7 +87,7 @@ test('homeroom teacher can view dashboard', function () {
     $teacherUser = User::factory()->create(['user_type' => 'teacher']);
     $teacherUser->teacherProfile()->create([
         'nip' => 'T2',
-        'homeroom_class_id' => $this->class->id
+        'homeroom_class_id' => $this->class->id,
     ]);
 
     $response = $this->actingAs($teacherUser)

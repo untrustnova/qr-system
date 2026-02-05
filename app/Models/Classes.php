@@ -13,6 +13,7 @@ class Classes extends Model
         'grade',
         'label',
         'major_id',
+        'schedule_image_path',
     ];
 
     public function students(): HasMany
