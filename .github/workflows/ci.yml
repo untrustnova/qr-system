@@ -2,39 +2,69 @@ name: CI
 
 on:
   push:
-    branches: ["*"]
+    branches: ["main", "master"]
   pull_request:
+    branches: ["*"]
 
 jobs:
-  tests:
+  lint:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          tools: composer:v2
+
+      - name: Install Dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Run Pint
+        run: ./vendor/bin/pint --test
+
+  tests:
+    runs-on: ubuntu-latest
+    needs: lint
+    services:
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
-          extensions: mbstring, pdo_sqlite
-          tools: composer:v2
+          extensions: mbstring, pdo_sqlite, redis
+          coverage: none
 
-      - name: Install dependencies
+      - name: Install Dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader
 
-      - name: Prepare environment
+      - name: Prepare Environment
         run: |
           cp .env.example .env
           php artisan key:generate
-          mkdir -p database
           touch database/database.sqlite
 
-      - name: Run tests
+      - name: Execute Tests (Feature & Unit)
         env:
           APP_ENV: testing
           DB_CONNECTION: sqlite
           DB_DATABASE: database/database.sqlite
-          CACHE_STORE: array
-          QUEUE_CONNECTION: sync
+          CACHE_STORE: redis
+          QUEUE_CONNECTION: redis
           SESSION_DRIVER: array
-        run: php artisan test
+          REDIS_HOST: 127.0.0.1
+          TELESCOPE_ENABLED: false
+        run: php artisan test --parallel

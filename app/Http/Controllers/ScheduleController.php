@@ -24,6 +24,13 @@ class ScheduleController extends Controller
             $query->where('teacher_id', optional($request->user()->teacherProfile)->id);
         }
 
+        if ($request->user()->user_type === 'student') {
+            $classId = optional($request->user()->studentProfile)->class_id;
+            if ($classId) {
+                $query->where('class_id', $classId);
+            }
+        }
+
         if ($request->filled('class_id')) {
             $query->where('class_id', $request->integer('class_id'));
         }
@@ -150,6 +157,10 @@ class ScheduleController extends Controller
     {
         if ($request->user()->user_type === 'teacher' && $schedule->teacher_id !== optional($request->user()->teacherProfile)->id) {
             abort(403, 'Tidak boleh melihat jadwal guru lain');
+        }
+
+        if ($request->user()->user_type === 'student' && $schedule->class_id !== optional($request->user()->studentProfile)->class_id) {
+            abort(403, 'Hanya boleh melihat jadwal kelas sendiri');
         }
 
         return response()->json($schedule->load(['teacher.user', 'class', 'qrcodes', 'attendances']));

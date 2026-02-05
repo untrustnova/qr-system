@@ -35,8 +35,8 @@ class AttendanceController extends Controller
         $user = $request->user();
         $now = now();
 
-        if ($qr->type === 'student' && $user->user_type !== 'student') {
-            return response()->json(['message' => 'QR hanya untuk siswa'], 403);
+        if ($qr->type === 'student' && $user->user_type !== 'student' && $user->user_type !== 'teacher') {
+            return response()->json(['message' => 'QR hanya untuk siswa (atau guru)'], 403);
         }
 
         if ($qr->type === 'teacher' && $user->user_type !== 'teacher') {
@@ -62,6 +62,12 @@ class AttendanceController extends Controller
             }
 
             $device->update(['last_used_at' => $now]);
+        }
+
+        if ($qr->type === 'student' && $user->user_type === 'teacher') {
+            if ($qr->schedule->teacher_id !== optional($user->teacherProfile)->id) {
+                return response()->json(['message' => 'QR jadwal ini bukan untuk Anda'], 403);
+            }
         }
 
         if ($qr->type === 'student' && $qr->schedule && $user->studentProfile && $qr->schedule->class_id !== $user->studentProfile->class_id) {
@@ -670,10 +676,23 @@ class AttendanceController extends Controller
             'student_id' => ['nullable', 'exists:student_profiles,id'],
             'teacher_id' => ['nullable', 'exists:teacher_profiles,id'],
             'schedule_id' => ['required', 'exists:schedules,id'],
-            'status' => ['required', 'in:present,late,excused,sick,absent,dinas,izin'],
+            'status' => ['required', 'in:present,late,excused,sick,absent,dinas,izin,pulang'],
             'date' => ['required', 'date'],
             'reason' => ['nullable', 'string'],
         ]);
+
+        $user = $request->user();
+        $schedule = Schedule::findOrFail($data['schedule_id']);
+
+        if ($user->user_type === 'teacher') {
+            $teacherProfile = $user->teacherProfile;
+            $isOwner = $schedule->teacher_id === $teacherProfile->id;
+            $isHomeroom = $schedule->class_id === $teacherProfile->homeroom_class_id;
+
+            if (! $isOwner && ! $isHomeroom) {
+                abort(403, 'Guru hanya boleh input manual untuk jadwal sendiri atau kelas bimbingan');
+            }
+        }
 
         if ($data['attendee_type'] === 'student' && empty($data['student_id'])) {
             abort(422, 'student_id wajib untuk attendee_type student');
@@ -757,10 +776,17 @@ class AttendanceController extends Controller
                 return $rows->pluck('total', 'status')->all();
             });
 
+        $dailySummary = (clone $query)
+            ->selectRaw('DATE(date) as day, status, count(*) as total')
+            ->groupBy('day', 'status')
+            ->orderBy('day')
+            ->get();
+
         return response()->json([
             'status_summary' => $statusSummary,
             'class_summary' => $classSummary,
             'student_summary' => $studentSummary,
+            'daily_summary' => $dailySummary,
         ]);
     }
 
@@ -818,7 +844,7 @@ class AttendanceController extends Controller
             'month' => ['required', 'date_format:Y-m'],
         ]);
 
-        $start = \Illuminate\Support\Carbon::createFromFormat('Y-m', $request->string('month'))->startOfMonth();
+        $start = Carbon::createFromFormat('Y-m', $request->string('month'))->startOfMonth();
         $end = $start->copy()->endOfMonth();
 
         $summary = Attendance::selectRaw('attendee_type, status, count(*) as total')
@@ -841,7 +867,7 @@ class AttendanceController extends Controller
         return response()->json($data);
     }
 
-    public function summaryByClass(Request $request, \App\Models\Classes $class): JsonResponse
+    public function summaryByClass(Request $request, Classes $class): JsonResponse
     {
         if ($request->user()->user_type === 'teacher') {
             $teacherId = optional($request->user()->teacherProfile)->id;
@@ -882,7 +908,7 @@ class AttendanceController extends Controller
         ], 201);
     }
 
-    public function getDocument(Request $request, Attendance $attendance): JsonResponse
+    public function getDocument(Request $request, Attendance $attendance): StreamedResponse|JsonResponse
     {
         $attachment = $attendance->attachments()->latest()->first();
 
@@ -890,17 +916,29 @@ class AttendanceController extends Controller
             return response()->json(['message' => 'Document not found'], 404);
         }
 
-        return response()->json([
-            'id' => $attachment->id,
-            'url' => $this->signedUrl($attachment->path),
-            'mime_type' => $attachment->mime_type,
-            'original_name' => $attachment->original_name,
-        ]);
+        // Authorize (Teacher/Waka or Owner)
+        $user = $request->user();
+        $isTeacher = $user->user_type === 'teacher';
+        $isAdmin = $user->user_type === 'admin';
+        $isOwner = $attendance->student_id === optional($user->studentProfile)->id;
+
+        if (! $isTeacher && ! $isAdmin && ! $isOwner) {
+            abort(403);
+        }
+
+        if (! Storage::disk('local')->exists($attachment->path)) {
+            return response()->json(['message' => 'File missing'], 404);
+        }
+
+        return Storage::disk('local')->download(
+            $attachment->path,
+            $attachment->original_name
+        );
     }
 
     protected function storeAttachment(UploadedFile $file): string
     {
-        return $file->store('attendance-attachments');
+        return $file->store('attendance-attachments', 'local');
     }
 
     public function void(Request $request, Attendance $attendance): JsonResponse
@@ -952,7 +990,7 @@ class AttendanceController extends Controller
         }
 
         $data = $request->validate([
-            'status' => ['required', 'in:present,late,excused,sick,absent,dinas,izin'],
+            'status' => ['required', 'in:present,late,excused,sick,absent,dinas,izin,pulang'],
             'reason' => ['nullable', 'string'],
         ]);
 

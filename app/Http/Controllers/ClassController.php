@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Attendance;
 use App\Models\Classes;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -59,28 +60,28 @@ class ClassController extends Controller
         ]);
 
         if ($class->schedule_image_path) {
-            Storage::disk('public')->delete($class->schedule_image_path);
+            Storage::disk('local')->delete($class->schedule_image_path);
         }
 
-        $path = $request->file('file')->store('schedules/classes', 'public');
+        $path = $request->file('file')->store('schedules/classes', 'local');
         $class->update(['schedule_image_path' => $path]);
 
-        return response()->json(['url' => asset('storage/'.$path)]);
+        return response()->json(['message' => 'Uploaded successfully']);
     }
 
     public function getScheduleImage(Classes $class)
     {
-        if (! $class->schedule_image_path || ! Storage::disk('public')->exists($class->schedule_image_path)) {
+        if (! $class->schedule_image_path || ! Storage::disk('local')->exists($class->schedule_image_path)) {
             return response()->json(['message' => 'Image not found'], 404);
         }
 
-        return response()->file(Storage::disk('public')->path($class->schedule_image_path));
+        return Storage::disk('local')->response($class->schedule_image_path);
     }
 
     public function deleteScheduleImage(Classes $class): JsonResponse
     {
         if ($class->schedule_image_path) {
-            Storage::disk('public')->delete($class->schedule_image_path);
+            Storage::disk('local')->delete($class->schedule_image_path);
             $class->update(['schedule_image_path' => null]);
         }
 
@@ -134,7 +135,7 @@ class ClassController extends Controller
 
         $classId = $user->studentProfile->class_id;
 
-        $query = \App\Models\Attendance::whereHas('student.classRoom', function ($q) use ($classId) {
+        $query = Attendance::whereHas('student.classRoom', function ($q) use ($classId) {
             $q->where('id', $classId);
         });
 

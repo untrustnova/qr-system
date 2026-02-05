@@ -43,6 +43,11 @@ class User extends Authenticatable
         'remember_token',
     ];
 
+    protected $appends = [
+        'role',
+        'is_class_officer',
+    ];
+
     /**
      * Get the attributes that should be cast.
      *
@@ -55,6 +60,31 @@ class User extends Authenticatable
             'password' => 'hashed',
             'active' => 'boolean',
         ];
+    }
+
+    protected function role(): Attribute
+    {
+        return Attribute::get(function () {
+            if ($this->user_type === 'teacher' && $this->teacherProfile?->homeroom_class_id) {
+                return 'wali';
+            }
+
+            if ($this->user_type === 'student' && $this->studentProfile?->is_class_officer) {
+                return 'pengurus';
+            }
+
+            return match ($this->user_type) {
+                'admin' => 'admin',
+                'teacher' => 'guru',
+                'student' => 'siswa',
+                default => $this->user_type,
+            };
+        });
+    }
+
+    protected function isClassOfficer(): Attribute
+    {
+        return Attribute::get(fn () => (bool) $this->studentProfile?->is_class_officer);
     }
 
     protected function isAdmin(): Attribute

@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Events\AbsenceRequestCreated;
 use App\Events\AbsenceRequestUpdated;
 use App\Models\AbsenceRequest;
+use App\Models\Schedule;
 use App\Models\StudentProfile;
+use App\Models\TeacherProfile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,10 +17,14 @@ class AbsenceRequestController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = AbsenceRequest::query()->with(['student.user', 'classRoom', 'requester', 'approver']);
+        $query = AbsenceRequest::query()->with(['student.user', 'teacher.user', 'classRoom', 'requester', 'approver']);
 
         if ($request->filled('status')) {
             $query->where('status', $request->string('status'));
+        }
+
+        if ($request->filled('teacher_id')) {
+            $query->where('teacher_id', $request->integer('teacher_id'));
         }
 
         if ($request->filled('class_id')) {
@@ -35,15 +41,41 @@ class AbsenceRequestController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'student_id' => ['required', 'exists:student_profiles,id'],
+            'student_id' => ['nullable', 'exists:student_profiles,id'],
+            'teacher_id' => ['nullable', 'exists:teacher_profiles,id'],
             'type' => ['required', 'in:dispensation,sick,permit'],
             'start_date' => ['required', 'date'],
             'end_date' => ['required', 'date', 'after_or_equal:start_date'],
             'reason' => ['nullable', 'string'],
         ]);
 
-        $student = StudentProfile::with('classRoom')->findOrFail($data['student_id']);
         $user = $request->user();
+
+        // If teacher is reporting their own absence
+        if ($user->user_type === 'teacher' && ! isset($data['student_id'])) {
+            $teacherProfile = $user->teacherProfile;
+            $data['teacher_id'] = $teacherProfile->id;
+
+            $absenceRequest = AbsenceRequest::create([
+                'teacher_id' => $data['teacher_id'],
+                'requested_by' => $user->id,
+                'type' => $data['type'],
+                'start_date' => $data['start_date'],
+                'end_date' => $data['end_date'],
+                'reason' => $data['reason'] ?? null,
+                'status' => 'pending',
+            ]);
+
+            AbsenceRequestCreated::dispatch($absenceRequest);
+
+            return response()->json($absenceRequest->load(['teacher.user', 'requester']), 201);
+        }
+
+        if (! isset($data['student_id'])) {
+            abort(422, 'student_id wajib jika bukan laporan guru');
+        }
+
+        $student = StudentProfile::with('classRoom')->findOrFail($data['student_id']);
 
         if ($user->user_type === 'student') {
             if (! optional($user->studentProfile)->is_class_officer) {
@@ -53,7 +85,7 @@ class AbsenceRequestController extends Controller
 
         if ($user->user_type === 'teacher') {
             $teacherProfile = $user->teacherProfile
-                ?? \App\Models\TeacherProfile::where('user_id', $user->id)->first();
+                ?? TeacherProfile::where('user_id', $user->id)->first();
             $teacherId = $teacherProfile?->id;
             $classRoom = $student->classRoom;
 
@@ -61,7 +93,7 @@ class AbsenceRequestController extends Controller
             $isTeaching = $classRoom
                 ? $classRoom->schedules()->where('teacher_id', $teacherId)->exists()
                 : ($student->class_id
-                    ? \App\Models\Schedule::where('class_id', $student->class_id)
+                    ? Schedule::where('class_id', $student->class_id)
                         ->where('teacher_id', $teacherId)
                         ->exists()
                     : false);

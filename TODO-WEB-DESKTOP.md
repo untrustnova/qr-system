@@ -4,11 +4,10 @@ Dokumen ini merangkum fitur Web/Desktop yang direncanakan vs yang sudah tersedia
 
 ## Siswa
 **Sudah ada di backend**
-- Melihat jadwal (bisa via `GET /schedules`, tapi backend hanya mengizinkan admin/teacher; belum ada akses siswa).
+- Melihat jadwal (bisa via `GET /schedules` dan `GET /me/schedules`).
 - Melihat daftar ketidakhadiran pribadi (via `GET /me/attendance`).
 
 **Belum ada / belum lengkap**
-- Akses siswa ke endpoint jadwal (`/schedules`) — saat ini role siswa tidak diizinkan.
 - Daftar ketidakhadiran per siswa (global) — hanya admin/guru bisa lihat data lain.
 
 ## Admin
@@ -28,9 +27,10 @@ Dokumen ini merangkum fitur Web/Desktop yang direncanakan vs yang sudah tersedia
 - Presensi via QR (POST /attendance/scan).
 - Lihat presensi siswa per jadwal (GET /attendance/schedules/{schedule}).
 - Edit status presensi siswa (POST /attendance/{attendance}/excuse).
+- Flow "scan QR dari pengurus kelas" (Guru bisa scan QR tipe 'student').
 
 **Belum ada / belum lengkap**
-- Flow "scan QR dari pengurus kelas" tidak dibedakan khusus — QR generate untuk siswa sudah ada, tapi belum ada endpoint yang memastikan guru hanya scan QR student-class officer.
+
 
 ## Waka (Admin type: waka)
 **Sudah ada di backend**

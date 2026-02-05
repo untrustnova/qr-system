@@ -75,4 +75,32 @@ class AuthController extends Controller
 
         return response()->json(['message' => 'Logged out']);
     }
+
+    public function changePassword(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'current_password' => ['required', 'current_password'],
+            'new_password' => ['required', 'min:6', 'confirmed'],
+        ]);
+
+        $request->user()->update([
+            'password' => Hash::make($data['new_password']),
+        ]);
+
+        return response()->json(['message' => 'Password changed']);
+    }
+
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $data = $request->validate([
+            'email' => ['nullable', 'email', 'unique:users,email,'.$user->id],
+            'phone' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        $user->update($data);
+
+        return response()->json($user->fresh());
+    }
 }

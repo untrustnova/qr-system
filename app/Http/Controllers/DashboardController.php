@@ -5,22 +5,29 @@ namespace App\Http\Controllers;
 use App\Models\Attendance;
 use App\Models\Classes;
 use App\Models\Major;
+use App\Models\Room;
 use App\Models\Schedule;
 use App\Models\StudentProfile;
 use App\Models\TeacherProfile;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends Controller
 {
     public function adminSummary(): JsonResponse
     {
-        return response()->json([
-            'students_count' => StudentProfile::count(),
-            'teachers_count' => TeacherProfile::count(),
-            'classes_count' => Classes::count(),
-            'majors_count' => Major::count(),
-        ]);
+        $stats = Cache::remember('admin_summary_stats', 600, function () {
+            return [
+                'students_count' => StudentProfile::count(),
+                'teachers_count' => TeacherProfile::count(),
+                'classes_count' => Classes::count(),
+                'majors_count' => Major::count(),
+                'rooms_count' => Room::count(),
+            ];
+        });
+
+        return response()->json($stats);
     }
 
     public function attendanceSummary(Request $request): JsonResponse
@@ -66,7 +73,7 @@ class DashboardController extends Controller
 
         // Get today's schedules for student's class
         $schedules = Schedule::where('class_id', $student->class_id)
-            ->where('day', now()->dayOfWeek)
+            ->where('day', now()->format('l'))
             ->with(['teacher.user'])
             ->orderBy('start_time')
             ->get();
@@ -127,7 +134,7 @@ class DashboardController extends Controller
 
         // Get today's teaching schedules
         $schedules = Schedule::where('teacher_id', $teacher->id)
-            ->where('day', now()->dayOfWeek)
+            ->where('day', now()->format('l'))
             ->with('class')
             ->orderBy('start_time')
             ->get();
@@ -193,7 +200,7 @@ class DashboardController extends Controller
 
         // Get today's schedules for homeroom class
         $schedules = Schedule::where('class_id', $homeroomClass->id)
-            ->where('day', now()->dayOfWeek)
+            ->where('day', now()->format('l'))
             ->with(['teacher.user'])
             ->orderBy('start_time')
             ->get();

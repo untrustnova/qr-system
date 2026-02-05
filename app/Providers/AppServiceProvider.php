@@ -2,10 +2,15 @@
 
 namespace App\Providers;
 
+use App\Events\AttendanceRecorded;
+use App\Listeners\SendAttendanceNotification;
+use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Pennant\Feature;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -25,6 +30,20 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Define Features (with safety check for CLI/Migrations)
+        if (! $this->app->runningInConsole() || app()->bound('db')) {
+            try {
+                Feature::define('new-mobile-dashboard', fn (User $user) => $user->user_type === 'admin');
+            } catch (\Throwable $e) {
+                // Silently skip if DB is not ready yet
+            }
+        }
+
+        Event::listen(
+            AttendanceRecorded::class,
+            SendAttendanceNotification::class,
+        );
+
         RateLimiter::for('api', function (Request $request) {
             $key = $request->user()?->id ? 'user:'.$request->user()->id : 'ip:'.$request->ip();
 

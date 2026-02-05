@@ -9,6 +9,7 @@ class AbsenceRequest extends Model
 {
     protected $fillable = [
         'student_id',
+        'teacher_id',
         'class_id',
         'requested_by',
         'type',
@@ -30,6 +31,11 @@ class AbsenceRequest extends Model
     public function student(): BelongsTo
     {
         return $this->belongsTo(StudentProfile::class, 'student_id');
+    }
+
+    public function teacher(): BelongsTo
+    {
+        return $this->belongsTo(TeacherProfile::class, 'teacher_id');
     }
 
     public function classRoom(): BelongsTo

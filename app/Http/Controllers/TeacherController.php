@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Http\Resources\TeacherResource;
+use App\Models\Attendance;
+use App\Models\Schedule;
+use App\Models\StudentProfile;
 use App\Models\TeacherProfile;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -149,28 +152,28 @@ class TeacherController extends Controller
         ]);
 
         if ($teacher->schedule_image_path) {
-            Storage::disk('public')->delete($teacher->schedule_image_path);
+            Storage::disk('local')->delete($teacher->schedule_image_path);
         }
 
-        $path = $request->file('file')->store('schedules/teachers', 'public');
+        $path = $request->file('file')->store('schedules/teachers', 'local');
         $teacher->update(['schedule_image_path' => $path]);
 
-        return response()->json(['url' => asset('storage/'.$path)]);
+        return response()->json(['message' => 'Uploaded successfully']);
     }
 
     public function getScheduleImage(TeacherProfile $teacher)
     {
-        if (! $teacher->schedule_image_path || ! Storage::disk('public')->exists($teacher->schedule_image_path)) {
+        if (! $teacher->schedule_image_path || ! Storage::disk('local')->exists($teacher->schedule_image_path)) {
             return response()->json(['message' => 'Image not found'], 404);
         }
 
-        return response()->file(Storage::disk('public')->path($teacher->schedule_image_path));
+        return Storage::disk('local')->response($teacher->schedule_image_path);
     }
 
     public function deleteScheduleImage(TeacherProfile $teacher): JsonResponse
     {
         if ($teacher->schedule_image_path) {
-            Storage::disk('public')->delete($teacher->schedule_image_path);
+            Storage::disk('local')->delete($teacher->schedule_image_path);
             $teacher->update(['schedule_image_path' => null]);
         }
 
@@ -180,7 +183,7 @@ class TeacherController extends Controller
     public function attendance(Request $request, TeacherProfile $teacher): JsonResponse
     {
         // Waka viewing teacher attendance
-        $query = \App\Models\Attendance::where('teacher_id', $teacher->id); // Assuming teacher_id is in attendance
+        $query = Attendance::where('teacher_id', $teacher->id); // Assuming teacher_id is in attendance
         // Wait, Attendance model might rely on user_id or similar.
         // Let's check Attendance model structure.
         // Assuming it links to User or TeacherProfile.
@@ -243,7 +246,7 @@ class TeacherController extends Controller
 
         $classId = $user->teacherProfile->homeroom_class_id;
 
-        $query = \App\Models\Attendance::whereHas('student', function ($q) use ($classId) {
+        $query = Attendance::whereHas('student', function ($q) use ($classId) {
             $q->where('class_id', $classId);
         });
 
@@ -269,7 +272,7 @@ class TeacherController extends Controller
 
         $classId = $user->teacherProfile->homeroom_class_id;
 
-        $query = \App\Models\Attendance::whereHas('student', function ($q) use ($classId) {
+        $query = Attendance::whereHas('student', function ($q) use ($classId) {
             $q->where('class_id', $classId);
         });
 
@@ -302,10 +305,10 @@ class TeacherController extends Controller
         }
 
         // Get all students from classes taught by this teacher
-        $schedules = \App\Models\Schedule::where('teacher_id', $teacher->id)->get();
+        $schedules = Schedule::where('teacher_id', $teacher->id)->get();
         $classIds = $schedules->pluck('class_id')->unique();
 
-        $query = \App\Models\StudentProfile::whereIn('class_id', $classIds)
+        $query = StudentProfile::whereIn('class_id', $classIds)
             ->with(['user', 'classRoom']);
 
         // Apply search filter
@@ -318,7 +321,7 @@ class TeacherController extends Controller
 
         $students = $query->get()->map(function ($student) {
             // Get attendance summary for this student
-            $attendanceSummary = \App\Models\Attendance::where('student_id', $student->id)
+            $attendanceSummary = Attendance::where('student_id', $student->id)
                 ->selectRaw('status, count(*) as count')
                 ->groupBy('status')
                 ->get()
@@ -365,5 +368,27 @@ class TeacherController extends Controller
         })->sortByDesc('severity_score')->values();
 
         return response()->json(['data' => $students]);
+    }
+
+    public function uploadMyScheduleImage(Request $request): JsonResponse
+    {
+        $teacher = $request->user()->teacherProfile;
+
+        if (! $teacher) {
+            abort(404, 'Teacher profile not found');
+        }
+
+        $request->validate([
+            'file' => 'required|image|max:2048',
+        ]);
+
+        if ($teacher->schedule_image_path) {
+            Storage::disk('local')->delete($teacher->schedule_image_path);
+        }
+
+        $path = $request->file('file')->store('schedules/teachers', 'local');
+        $teacher->update(['schedule_image_path' => $path]);
+
+        return response()->json(['message' => 'Uploaded successfully']);
     }
 }

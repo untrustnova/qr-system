@@ -53,4 +53,3 @@
 - [x] /api/wa/send-text { to, message }
 - [x] /api/wa/send-media { to, mediaBase64, filename, caption }
 
-## plis aku capek ditimpa banyak project aduhai backend cuma 1 apa coba ini
