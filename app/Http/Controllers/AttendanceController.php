@@ -9,6 +9,8 @@ use App\Models\Qrcode;
 use App\Models\Schedule;
 use App\Models\StudentProfile;
 use App\Models\TeacherProfile;
+use App\Services\WhatsAppService;
+use App\Services\WhatsAppTemplates;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -19,6 +21,13 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AttendanceController extends Controller
 {
+    protected WhatsAppService $whatsapp;
+
+    public function __construct(WhatsAppService $whatsapp)
+    {
+        $this->whatsapp = $whatsapp;
+    }
+
     public function scan(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -98,6 +107,22 @@ class AttendanceController extends Controller
 
         // dispatch event after creation to ensure ID is available
         AttendanceRecorded::dispatch($attendance);
+
+        // Send WhatsApp notification for student attendance
+        if ($user->user_type === 'student' && $user->studentProfile && config('whatsapp.notifications.attendance_success')) {
+            $student = $user->studentProfile->load('user');
+
+            // Send to parent if phone number exists
+            if ($student->parent_phone) {
+                $message = WhatsAppTemplates::attendanceSuccess(
+                    $student->user->name,
+                    $now->format('H:i'),
+                    'Hadir'
+                );
+
+                $this->whatsapp->sendMessage($student->parent_phone, $message);
+            }
+        }
 
         Log::info('attendance.recorded', [
             'attendance_id' => $attendance->id,

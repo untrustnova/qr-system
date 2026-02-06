@@ -26,7 +26,7 @@ class TeacherSeeder extends Seeder
             ['user_id' => $user->id],
             [
                 'nip' => 'NIP-0001',
-                'subject' => 'Matematika',
+                'subject' => 'Normatif', // Updated from 'Matematika' to match new Enum categories
             ]
         );
     }

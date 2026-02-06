@@ -9,6 +9,13 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Classes extends Model
 {
+    protected $appends = ['name'];
+
+    public function getNameAttribute(): string
+    {
+        return trim("{$this->grade} {$this->label}");
+    }
+
     protected $fillable = [
         'grade',
         'label',

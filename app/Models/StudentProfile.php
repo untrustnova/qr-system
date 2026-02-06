@@ -14,6 +14,7 @@ class StudentProfile extends Model
         'nis',
         'gender',
         'address',
+        'parent_phone',
         'class_id',
         'is_class_officer',
     ];

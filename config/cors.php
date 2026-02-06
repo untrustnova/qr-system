@@ -19,7 +19,13 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*'],
+    'allowed_origins' => [
+        'http://localhost:5174',
+        'http://127.0.0.1:5174',
+        'http://localhost:5173', // also allow 5173 as it's common for vite
+        'http://127.0.0.1:5173',
+        '*', // fallback
+    ],
 
     'allowed_origins_patterns' => [],
 
