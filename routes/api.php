@@ -102,11 +102,13 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
     Route::middleware('role:admin,teacher')->group(function (): void {
         Route::get('/attendance/schedules/{schedule}', [AttendanceController::class, 'bySchedule']);
         Route::post('/attendance/{attendance}/excuse', [AttendanceController::class, 'markExcuse']);
+        Route::patch('/attendance/{attendance}', [AttendanceController::class, 'markExcuse']); // Alias for Webta
         Route::get('/attendance/export', [AttendanceController::class, 'export']);
         Route::get('/attendance/recap', [AttendanceController::class, 'recap']);
         Route::get('/attendance/schedules/{schedule}/summary', [AttendanceController::class, 'summaryBySchedule']);
         Route::get('/attendance/classes/{class}/summary', [AttendanceController::class, 'summaryByClass']);
         Route::post('/attendance/{attendance}/attachments', [AttendanceController::class, 'attach']);
+        Route::post('/attendance/{attendance}/document', [AttendanceController::class, 'attach']); // Alias for Webta
         Route::get('/attendance/{attendance}/document', [AttendanceController::class, 'getDocument']);
         Route::post('/attendance/{attendance}/void', [AttendanceController::class, 'void']);
     });
@@ -118,6 +120,7 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
         Route::get('/classes/{class}/attendance', [AttendanceController::class, 'classAttendanceByDate']);
         Route::get('/classes/{class}/students/attendance-summary', [AttendanceController::class, 'classStudentsSummary']);
         Route::get('/classes/{class}/students/absences', [AttendanceController::class, 'classStudentsAbsences']);
+        Route::post('/me/schedule-image', [TeacherController::class, 'uploadMyScheduleImage']);
 
         Route::prefix('me/homeroom')->group(function () {
             Route::get('/', [TeacherController::class, 'myHomeroom']);
@@ -141,6 +144,9 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
     });
 
     Route::middleware(['role:student', 'class-officer'])->group(function (): void {
+        Route::post('/qrcodes/generate', [QrCodeController::class, 'generate']);
+        Route::post('/me/class/qr-token', [QrCodeController::class, 'generate']); // Alias for Webta
+        Route::post('/qrcodes/{token}/revoke', [QrCodeController::class, 'revoke']);
 
         Route::prefix('me/class')->group(function () {
             Route::get('/', [ClassController::class, 'myClass']);
