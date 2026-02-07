@@ -30,7 +30,7 @@ class ClassController extends Controller
 
     public function show(Classes $class): JsonResponse
     {
-        return response()->json($class->load(['students', 'homeroomTeacher', 'major']));
+        return response()->json($class->load(['students.user', 'homeroomTeacher', 'major']));
     }
 
     public function update(Request $request, Classes $class): JsonResponse

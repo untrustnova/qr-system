@@ -89,6 +89,10 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
         Route::get('/qrcodes/active', [QrCodeController::class, 'active']);
         Route::post('/qrcodes/generate', [QrCodeController::class, 'generate']);
         Route::post('/qrcodes/{token}/revoke', [QrCodeController::class, 'revoke']);
+
+        // Allow teachers to view class details (including students) and input manual attendance
+        Route::get('/classes/{class}', [ClassController::class, 'show']);
+        Route::post('/attendance/manual', [AttendanceController::class, 'manual']);
     });
 
     Route::middleware('role:admin,teacher,student')->group(function (): void {
