@@ -239,6 +239,73 @@ class DashboardController extends Controller
     }
 
     /**
+     * Get Waka (Vice Principal) dashboard summary
+     * Returns today's stats and monthly trend
+     */
+    public function wakaDashboard(Request $request): JsonResponse
+    {
+        $today = now()->format('Y-m-d');
+        $startOfMonth = now()->startOfMonth()->format('Y-m-d');
+        $endOfMonth = now()->endOfMonth()->format('Y-m-d');
+
+        // 1. Stats Hari Ini (Today's Stats)
+        $todayStats = Attendance::whereDate('date', $today)
+            ->selectRaw('status, count(*) as count')
+            ->groupBy('status')
+            ->get()
+            ->pluck('count', 'status');
+
+        $statistik = [
+            'hadir' => $todayStats->get('present', 0),
+            'izin' => $todayStats->get('izin', 0) + $todayStats->get('excused', 0),
+            'sakit' => $todayStats->get('sick', 0),
+            'alpha' => $todayStats->get('absent', 0),
+            'terlambat' => $todayStats->get('late', 0),
+            'pulang' => 0, // Logic for 'pulang' might need specific definition, set 0 for now
+        ];
+
+        // 2. Tren Bulanan (Monthly Trend)
+        // Get daily counts for the current month
+        $monthlyData = Attendance::whereBetween('date', [$startOfMonth, $endOfMonth])
+            ->selectRaw('DATE(date) as date, status, count(*) as count')
+            ->groupBy('date', 'status')
+            ->get()
+            ->groupBy('date');
+
+        // Fill in missing days
+        $trend = [];
+        $currentDate = now()->startOfMonth();
+        while ($currentDate <= now()->endOfMonth()) {
+            $dateStr = $currentDate->format('Y-m-d');
+            $dayData = $monthlyData->get($dateStr, collect([]));
+
+            $hadir = $dayData->where('status', 'present')->sum('count');
+            $izin = $dayData->whereIn('status', ['izin', 'excused'])->sum('count');
+            $sakit = $dayData->where('status', 'sick')->sum('count');
+            $alpha = $dayData->where('status', 'absent')->sum('count');
+            $terlambat = $dayData->where('status', 'late')->sum('count');
+
+            $trend[] = [
+                'date' => $dateStr,
+                'label' => $currentDate->format('d M'), // e.g., "01 Feb"
+                'hadir' => $hadir,
+                'izin' => $izin,
+                'sakit' => $sakit,
+                'alpha' => $alpha,
+                'terlambat' => $terlambat,
+            ];
+
+            $currentDate->addDay();
+        }
+
+        return response()->json([
+            'date' => $today,
+            'statistik' => $statistik,
+            'trend' => $trend,
+        ]);
+    }
+
+    /**
      * Helper method to get status label in Indonesian
      */
     private function getStatusLabel(?string $status): string

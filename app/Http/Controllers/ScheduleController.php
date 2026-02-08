@@ -18,7 +18,7 @@ class ScheduleController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Schedule::query()->with(['teacher.user', 'class']);
+        $query = Schedule::query()->with(['teacher.user:id,name', 'class:id,name']);
 
         if ($request->user()->user_type === 'teacher') {
             $query->where('teacher_id', optional($request->user()->teacherProfile)->id);
@@ -103,7 +103,7 @@ class ScheduleController extends Controller
         $day = $date->format('l');
 
         $schedules = Schedule::query()
-            ->with(['teacher.user', 'class'])
+            ->with(['teacher.user:id,name', 'class:id,name'])
             ->where('class_id', $request->user()->studentProfile->class_id)
             ->where('day', $day)
             ->orderBy('start_time')
@@ -143,7 +143,7 @@ class ScheduleController extends Controller
 
         $schedule = Schedule::create($data);
 
-        return response()->json($schedule->load(['teacher.user', 'class']), 201);
+        return response()->json($schedule->load(['teacher.user:id,name', 'class:id,name']), 201);
     }
 
     public function show(Request $request, Schedule $schedule): JsonResponse
@@ -152,7 +152,7 @@ class ScheduleController extends Controller
             abort(403, 'Tidak boleh melihat jadwal guru lain');
         }
 
-        return response()->json($schedule->load(['teacher.user', 'class', 'qrcodes', 'attendances']));
+        return response()->json($schedule->load(['teacher.user:id,name', 'class:id,name', 'qrcodes', 'attendances']));
     }
 
     public function update(Request $request, Schedule $schedule): JsonResponse
@@ -182,7 +182,7 @@ class ScheduleController extends Controller
 
         $schedule->update($data);
 
-        return response()->json($schedule->load(['teacher.user', 'class']));
+        return response()->json($schedule->load(['teacher.user:id,name', 'class:id,name']));
     }
 
     public function bulkUpsert(Request $request, Classes $class): JsonResponse
@@ -246,7 +246,7 @@ class ScheduleController extends Controller
         });
 
         $createdIds = $created->pluck('id')->all();
-        $schedules = Schedule::with(['teacher.user', 'class'])
+        $schedules = Schedule::with(['teacher.user:id,name', 'class:id,name'])
             ->whereIn('id', $createdIds)
             ->get();
 

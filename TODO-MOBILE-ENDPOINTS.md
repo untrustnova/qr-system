@@ -444,6 +444,9 @@ Dokumen ini berisi spesifikasi JSON Request/Response yang dibutuhkan oleh Mobile
 - ✅ `GET /api/me/students/follow-up` (Guru - Tindak Lanjut) - **IMPLEMENTED** (2026-02-05)
 - ✅ `GET /api/me/notifications` (Guru/Siswa) - **IMPLEMENTED** (alias ke `/mobile/notifications`)
 - ✅ `GET /api/teachers` - **ACCESSIBLE** untuk student & teacher (2026-02-05)
+- ✅ `GET /api/me/homeroom/attendance` (Wali Kelas - Riwayat) - **IMPLEMENTED** (2026-02-07)
+- ✅ `GET /api/me/schedules` (Siswa - Jadwal) - **IMPLEMENTED** (2026-02-07)
+- ✅ `GET /api/classes` (List Kelas) - **IMPLEMENTED** (2026-02-07)
 
 **Controllers**:
 - `DashboardController@studentDashboard` - Student dashboard dengan jadwal + status kehadiran
@@ -478,6 +481,35 @@ Dokumen ini berisi spesifikasi JSON Request/Response yang dibutuhkan oleh Mobile
 - ✅ Mobile app ready to connect!
 
 ---
+
+## 11. Statistik Guru
+
+### Get Monthly Statistics
+**Endpoint**: `GET /api/me/statistics/monthly`
+**Header**: `Authorization: Bearer <token>`
+**Query Params**: `?month=2&year=2025`
+
+**Response (200 OK)**:
+```json
+{
+    "month": "2",
+    "year": "2025",
+    "summary": {
+        "hadir": 20,
+        "sakit": 1,
+        "izin": 0,
+        "alfa": 0
+    },
+    "chart_data": [
+        { "day": 1, "status": "hadir" },
+        { "day": 2, "status": "hadir" }
+    ]
+}
+```
+
+---
+
+
 
 ## 🚀 Status: READY FOR MOBILE APP INTEGRATION
 

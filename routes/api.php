@@ -41,12 +41,22 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
     // Mobile follow-up endpoint
     Route::get('/me/students/follow-up', [TeacherController::class, 'getStudentsFollowUp'])->middleware('role:teacher');
 
+    // Mobile specific teacher endpoints (attendance & stats)
+    Route::middleware('role:teacher')->group(function () {
+        Route::get('/me/attendance/history', [\App\Http\Controllers\Api\TeacherStatisticsController::class, 'attendanceHistory']); // Optional alias
+        Route::get('/me/statistics/monthly', [\App\Http\Controllers\Api\TeacherStatisticsController::class, 'monthlySummary']);
+    });
+
     // Public teachers list (read-only for mobile app)
     Route::get('/teachers', [TeacherController::class, 'index'])->middleware('role:student,teacher');
+    
+    // Public classes list (read-only for mobile app)
+    Route::get('/classes', [ClassController::class, 'index'])->middleware('role:student,teacher');
+    Route::get('/majors', [MajorController::class, 'index'])->middleware('role:student,teacher');
 
     Route::middleware('role:admin')->group(function (): void {
         Route::apiResource('majors', MajorController::class);
-        Route::apiResource('classes', ClassController::class);
+        Route::apiResource('classes', ClassController::class)->except(['index']); // index is public now
         Route::apiResource('teachers', TeacherController::class)->except(['index']); // index available publicly
         Route::post('/teachers/import', [TeacherController::class, 'import']);
         Route::apiResource('students', StudentController::class);
@@ -73,6 +83,7 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
         Route::get('/attendance/teachers/daily', [AttendanceController::class, 'teachersDailyAttendance']);
         Route::post('/attendance/manual', [AttendanceController::class, 'manual']);
         Route::get('/waka/attendance/summary', [AttendanceController::class, 'wakaSummary']);
+        Route::get('/waka/dashboard/summary', [DashboardController::class, 'wakaDashboard']);
         Route::get('/students/absences', [AttendanceController::class, 'studentsAbsences']);
 
         Route::post('/teachers/{teacher}/schedule-image', [TeacherController::class, 'uploadScheduleImage']);
@@ -121,6 +132,7 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
         Route::get('/classes/{class}/students/attendance-summary', [AttendanceController::class, 'classStudentsSummary']);
         Route::get('/classes/{class}/students/absences', [AttendanceController::class, 'classStudentsAbsences']);
         Route::post('/me/schedule-image', [TeacherController::class, 'uploadMyScheduleImage']);
+        Route::post('/me/schedules/{schedule}/close', [AttendanceController::class, 'close']);
 
         Route::prefix('me/homeroom')->group(function () {
             Route::get('/', [TeacherController::class, 'myHomeroom']);

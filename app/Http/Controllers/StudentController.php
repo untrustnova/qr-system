@@ -11,11 +11,27 @@ use Illuminate\Support\Facades\Hash;
 
 class StudentController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $students = StudentProfile::query()->with(['user', 'classRoom'])->latest()->paginate();
+        $query = StudentProfile::query()->with(['user', 'classRoom']);
 
-        return response()->json($students);
+        if ($request->filled('nisn')) {
+            $query->where('nisn', $request->string('nisn'));
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->string('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('nisn', 'like', "%{$search}%")
+                  ->orWhere('nis', 'like', "%{$search}%")
+                  ->orWhereHas('user', function ($u) use ($search) {
+                      $u->where('name', 'like', "%{$search}%")
+                        ->orWhere('username', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        return response()->json($query->latest()->paginate()->appends($request->all()));
     }
 
     public function import(Request $request): JsonResponse

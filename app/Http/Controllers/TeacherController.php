@@ -158,6 +158,17 @@ class TeacherController extends Controller
         return response()->json(['url' => asset('storage/'.$path)]);
     }
 
+    public function uploadMyScheduleImage(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if (! $user->teacherProfile) {
+            return response()->json(['message' => 'Teacher profile not found'], 404);
+        }
+
+        return $this->uploadScheduleImage($request, $user->teacherProfile);
+    }
+
     public function getScheduleImage(TeacherProfile $teacher)
     {
         if (! $teacher->schedule_image_path || ! Storage::disk('public')->exists($teacher->schedule_image_path)) {
@@ -179,20 +190,23 @@ class TeacherController extends Controller
 
     public function attendance(Request $request, TeacherProfile $teacher): JsonResponse
     {
-        // Waka viewing teacher attendance
-        $query = \App\Models\Attendance::where('teacher_id', $teacher->id); // Assuming teacher_id is in attendance
-        // Wait, Attendance model might rely on user_id or similar.
-        // Let's check Attendance model structure.
-        // Assuming it links to User or TeacherProfile.
-        // If generic attendance, it might be user_id.
-        // If specific teaching attendance, it might be tied to schedule -> teacher.
+        // Waka/Admin viewing teacher's attendance history
+        $query = \App\Models\Attendance::where('teacher_id', $teacher->id)
+            ->where('attendee_type', 'teacher');
 
-        // For now let's assume filtering by teacher's user_id if attendance has user_id,
-        // OR through schedule if attendance is for a class.
-        // But "Kehadiran Guru" usually means the teacher's presence.
-        // Let's default to user_id for now and I'll verify Attendance model.
+        if ($request->filled('month')) {
+            $query->whereMonth('date', $request->month);
+        }
 
-        return response()->json(['message' => 'Not implemented fully until Attendance model verified']);
+        if ($request->filled('year')) {
+            $query->whereYear('date', $request->year);
+        }
+
+        $attendances = $query->with(['schedule.class', 'schedule.subject'])
+            ->latest('date')
+            ->get();
+
+        return response()->json($attendances);
     }
 
     // Walikelas endpoints
@@ -257,7 +271,7 @@ class TeacherController extends Controller
             $query->where('status', $request->status);
         }
 
-        return response()->json($query->with('student.user')->latest()->get());
+        return response()->json($query->with(['student.user', 'schedule.subject', 'schedule.teacher.user'])->latest()->get());
     }
 
     public function myHomeroomAttendanceSummary(Request $request): JsonResponse

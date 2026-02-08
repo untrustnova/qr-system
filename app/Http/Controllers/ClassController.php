@@ -11,7 +11,7 @@ class ClassController extends Controller
 {
     public function index(): JsonResponse
     {
-        return response()->json(Classes::query()->with('major')->latest()->get());
+        return response()->json(Classes::query()->with(['major', 'homeroomTeacher.user'])->latest()->get());
     }
 
     public function store(Request $request): JsonResponse
@@ -148,6 +148,6 @@ class ClassController extends Controller
             $query->where('status', $request->status);
         }
 
-        return response()->json($query->with('student.user')->latest()->get());
+        return response()->json($query->with(['student.user', 'schedule.subject', 'schedule.teacher.user'])->latest()->get());
     }
 }

@@ -58,7 +58,7 @@ class MobileNotificationController extends Controller
         })
             ->where('attendee_type', 'teacher')
             ->whereDate('date', $date)
-            ->with('schedule.subject', 'schedule.class')
+            ->with('schedule.subject:id,name', 'schedule.class:id,name')
             ->get();
         
         foreach ($teachingAttendances as $attendance) {
@@ -151,7 +151,7 @@ class MobileNotificationController extends Controller
         // Notifikasi kehadiran hari ini
         $attendances = Attendance::where('student_id', $studentId)
             ->whereDate('date', $date)
-            ->with('schedule.subject')
+            ->with('schedule.subject:id,name')
             ->get();
         
         foreach ($attendances as $attendance) {

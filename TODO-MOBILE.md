@@ -69,7 +69,7 @@
 - `RiwayatKehadiranKelasSiswaActivity.kt`
 - `RiwayatKehadiranKelasPengurusActivity.kt`
 - Menampilkan riwayat kehadiran kelas (per tanggal/mapel)
-- **Backend Gap**: Endpoint untuk riwayat kelas (bukan per siswa)
+- **Backend Gap**: ✅ **SOLVED** - `GET /classes/{class}/attendance` (support filter date)
 
 ---
 
@@ -78,7 +78,7 @@
 ### 1. **Data Guru** (`Guru.kt`) ✅ SOLVED
 - **Mobile**: Field `kode` (String) dan `keterangan`
 - **Backend**: Tabel `teacher_profiles` hanya punya `nip`
-- **Solusi**: ✅ **IMPLEMENTED** - `TeacherResource` menambahkan virtual field `code` yang isinya sama dengan `nip`
+- **Solusi**: ✅ **IMPLEMENTED** - `TeasekacherResource` menambahkan virtual field `code` yang isinya sama dengan `nip`
 - **Impact**: ZERO breaking change - web/desktop tetap pakai `nip`, Mobile dapat `code`
 
 ### 2. **QR Code Format** ✅ SOLVED
@@ -127,6 +127,8 @@
 4. ✅ `GET /me/students/follow-up` - Students requiring follow-up
 5. ✅ `GET /me/notifications` - Notifications (alias)
 6. ✅ `GET /teachers` - Teachers list (accessible by students & teachers)
+7. ✅ `GET /me/statistics/monthly` - Teacher monthly attendance statistics
+8. ✅ `GET /classes/{class}/attendance` - Class attendance history (for teachers)
 
 ### Compatibility:
 - ✅ 13/13 endpoints working (100%)
@@ -141,53 +143,53 @@
 ## Todo List Implementasi Mobile
 
 ### **Tahap 1: Setup Network Layer** (Prioritas Tinggi)
-- [ ] Tambahkan dependency Retrofit, OkHttp, Gson/Moshi di `build.gradle`
-- [ ] Buat `ApiClient.kt` (Retrofit instance dengan base URL)
-- [ ] Buat `ApiService.kt` (Interface untuk semua endpoint)
-- [ ] Buat `SessionManager.kt` (SharedPreferences untuk Token JWT)
-- [ ] Buat `AuthInterceptor.kt` (Inject token ke header)
+- [x] Tambahkan dependency Retrofit, OkHttp, Gson/Moshi di `build.gradle`
+- [x] Buat `ApiClient.kt` (Retrofit instance dengan base URL)
+- [x] Buat `ApiService.kt` (Interface untuk semua endpoint)
+- [x] Buat `SessionManager.kt` (SharedPreferences untuk Token JWT)
+- [x] Buat `AuthInterceptor.kt` (Inject token ke header)
 
 ### **Tahap 2: Auth Feature** (Prioritas Tinggi)
-- [ ] Ubah `LoginLanjut.kt` untuk panggil `POST /auth/login`
-- [ ] Handle response (simpan token, user data, role)
-- [ ] Handle error (401, 422, network error)
-- [ ] Redirect ke Dashboard sesuai `role` dari API
+- [x] Ubah `LoginLanjut.kt` untuk panggil `POST /auth/login`
+- [x] Handle response (simpan token, user data, role)
+- [x] Handle error (401, 422, network error)
+- [x] Redirect ke Dashboard sesuai `role` dari API
 
 ### **Tahap 3: Dashboard Siswa** (Prioritas Tinggi)
-- [ ] Hapus `generateDummyJadwal()` di `DashboardSiswaActivity.kt`
-- [ ] Panggil endpoint `GET /me/dashboard/summary` (Proposed - lihat Endpoints.md)
-- [ ] Parse response dan tampilkan di UI
-- [ ] Handle loading state & error
+- [x] Hapus `generateDummyJadwal()` di `DashboardSiswaActivity.kt`
+- [x] Panggil endpoint `GET /me/dashboard/summary` (Proposed - lihat Endpoints.md)
+- [x] Parse response dan tampilkan di UI
+- [x] Handle loading state & error
 
 ### **Tahap 4: Dashboard Guru** (Prioritas Tinggi)
-- [ ] Hapus dummy data di `DashboardGuruActivity.kt`
-- [ ] Panggil endpoint `GET /me/dashboard/teacher-summary` (Proposed)
-- [ ] Tampilkan counter kehadiran siswa (agregat)
-- [ ] Tampilkan jadwal hari ini
+- [x] Hapus dummy data di `DashboardGuruActivity.kt`
+- [x] Panggil endpoint `GET /me/dashboard/teacher-summary` (Proposed)
+- [x] Tampilkan counter kehadiran siswa (agregat)
+- [x] Tampilkan jadwal hari ini
 
 ### **Tahap 5: QR Scanner** (Prioritas Sedang)
-- [ ] Integrasikan `CameraQRActivity.kt` dengan `POST /attendance/scan`
-- [ ] Kirim payload: `{qrcode_token, latitude, longitude}`
-- [ ] Handle response (success/error)
-- [ ] Tambahkan GPS permission & location service
+- [x] Integrasikan `CameraQRActivity.kt` dengan `POST /attendance/scan`
+- [x] Kirim payload: `{qrcode_token, latitude, longitude}`
+- [x] Handle response (success/error)
+- [x] Tambahkan GPS permission & location service
 
 ### **Tahap 6: Riwayat Kehadiran** (Prioritas Sedang)
-- [ ] **Guru**: Integrasikan `RiwayatKehadiranGuruActivity.kt` dengan `GET /me/attendance/teaching?date=&status=`
-- [ ] **Siswa**: Integrasikan dengan `GET /me/attendance?month=&year=`
-- [ ] Implementasi filter tanggal & status
+- [x] **Guru**: Integrasikan `RiwayatKehadiranGuruActivity.kt` dengan `GET /me/attendance/teaching?date=&status=`
+- [x] **Siswa**: Integrasikan dengan `GET /me/attendance?month=&year=`
+- [x] Implementasi filter tanggal & status
 
 ### **Tahap 7: Tindak Lanjut** (Prioritas Rendah)
-- [ ] Integrasikan `TindakLanjutGuruActivity.kt` dengan `GET /me/students/follow-up` (Proposed)
-- [ ] Tampilkan siswa bermasalah (Alpha ≥ 1 atau Izin > 5)
+- [x] Integrasikan `TindakLanjutGuruActivity.kt` dengan `GET /me/students/follow-up` (Proposed)
+- [x] Tampilkan siswa bermasalah (Alpha ≥ 1 atau Izin > 5)
 
 ### **Tahap 8: Notifikasi** (Prioritas Rendah)
-- [ ] Setup Firebase Cloud Messaging (FCM)
-- [ ] Integrasikan dengan Backend (endpoint untuk send notification)
-- [ ] Handle notification di foreground/background
+- [ ] Setup Firebase Cloud Messaging (FCM) (Diganti dengan Polling API)
+- [x] Integrasikan dengan Backend (endpoint untuk fetch notification)
+- [x] Handle notification UI
 
 ### **Tahap 9: Wali Kelas Features** (Prioritas Rendah)
-- [ ] Integrasikan `DashboardWaliKelasActivity.kt` dengan endpoint khusus wali kelas
-- [ ] Riwayat kehadiran kelas bimbingan
+- [x] Integrasikan `DashboardWaliKelasActivity.kt` dengan endpoint khusus wali kelas
+- [x] Riwayat kehadiran kelas bimbingan
 
 ---
 
