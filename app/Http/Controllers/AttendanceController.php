@@ -33,6 +33,8 @@ class AttendanceController extends Controller
         $data = $request->validate([
             'token' => ['required', 'string', 'exists:qrcodes,token'],
             'device_id' => ['nullable', 'integer'],
+            'latitude' => ['nullable', 'numeric'],
+            'longitude' => ['nullable', 'numeric'],
         ]);
 
         $qr = Qrcode::with('schedule:id,class_id,teacher_id,subject_name,start_time,end_time,room')->where('token', $data['token'])->firstOrFail();
@@ -81,6 +83,32 @@ class AttendanceController extends Controller
             return response()->json(['message' => 'QR bukan untuk guru ini'], 403);
         }
 
+        // ------------------------------------------------------------------
+    // 5. VALIDASI LOKASI (GEOFENCING) - DITUNDA (Opsi 1)
+    // ------------------------------------------------------------------
+    /*
+    if ($user->user_type === 'student') {
+        // Koordinat Sekolah (SMKN 4 Bogor)
+        $schoolLat = -6.6407334;
+        $schoolLng = 106.8259053;
+        $maxDistance = 100; // Meter
+
+        $studentLat = $data['latitude'] ?? null;
+        $studentLng = $data['longitude'] ?? null;
+
+        if ($studentLat && $studentLng) {
+            $distance = $this->calculateDistance($schoolLat, $schoolLng, $studentLat, $studentLng);
+            
+            if ($distance > $maxDistance) {
+                 return response()->json([
+                     'message' => "Lokasi anda terlalu jauh dari sekolah ({$distance}m). Maksimal {$maxDistance}m."
+                 ], 422);
+            }
+        } else {
+             Log::warning("Student {$user->name} scan without location");
+        }
+    }
+    */
         $attributes = [
             'attendee_type' => $user->user_type,
             'schedule_id' => $qr->schedule_id,
@@ -103,6 +131,8 @@ class AttendanceController extends Controller
             'status' => $this->determineStatus($qr->schedule, $now), // Use strict status check
             'checked_in_at' => $now,
             'source' => 'qrcode',
+            'latitude' => $data['latitude'] ?? null,
+            'longitude' => $data['longitude'] ?? null,
         ]);
 
         // dispatch event after creation to ensure ID is available
@@ -770,6 +800,7 @@ class AttendanceController extends Controller
             abort(422, 'student_id wajib untuk attendee_type student');
         }
 
+
         if ($data['attendee_type'] === 'teacher' && empty($data['teacher_id'])) {
             abort(422, 'teacher_id wajib untuk attendee_type teacher');
         }
@@ -807,14 +838,50 @@ class AttendanceController extends Controller
         return response()->json($attendance->load(['student.user:id,name', 'teacher.user:id,name', 'schedule:id,class_id,teacher_id,subject_name']), 201);
     }
 
+    public function bulkManual(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'schedule_id' => ['required', 'exists:schedules,id'],
+            'date' => ['required', 'date'],
+            'items' => ['required', 'array'],
+            'items.*.student_id' => ['required', 'exists:student_profiles,id'],
+            'items.*.status' => ['required', 'in:present,late,excused,sick,absent,dinas,izin'],
+        ]);
+
+        $scheduleId = $data['schedule_id'];
+        $date = $data['date'];
+        $saved = 0;
+
+        foreach ($data['items'] as $item) {
+             Attendance::updateOrCreate(
+                [
+                    'schedule_id' => $scheduleId,
+                    'student_id' => $item['student_id'],
+                    'attendee_type' => 'student',
+                    'date' => $date,
+                ],
+                [
+                    'status' => $item['status'],
+                    'source' => 'manual',
+                    'updated_at' => now(),
+                ]
+            );
+            $saved++;
+        }
+
+        return response()->json(['message' => "$saved data presensi berhasil disimpan"]);
+    }
+
     public function wakaSummary(Request $request): JsonResponse
     {
         $request->validate([
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
+            'type' => ['nullable', 'in:student,teacher'],
         ]);
 
-        $query = Attendance::query()->where('attendee_type', 'student');
+        $type = $request->string('type', 'student');
+        $query = Attendance::query()->where('attendee_type', $type);
 
         if ($request->filled('from')) {
             $query->whereDate('date', '>=', $request->date('from'));
@@ -829,21 +896,27 @@ class AttendanceController extends Controller
             ->groupBy('status')
             ->get();
 
-        $classSummary = (clone $query)
-            ->selectRaw('schedules.class_id as class_id, status, count(*) as total')
-            ->join('schedules', 'attendances.schedule_id', '=', 'schedules.id')
-            ->groupBy('schedules.class_id', 'status')
-            ->get()
-            ->groupBy('class_id')
-            ->map(function ($rows) {
-                return $rows->pluck('total', 'status')->all();
-            });
+        $classSummary = [];
+        if ($type === 'student') {
+            $classSummary = (clone $query)
+                ->selectRaw('schedules.class_id as class_id, status, count(*) as total')
+                ->join('schedules', 'attendances.schedule_id', '=', 'schedules.id')
+                ->groupBy('schedules.class_id', 'status')
+                ->get()
+                ->groupBy('class_id')
+                ->map(function ($rows) {
+                    return $rows->pluck('total', 'status')->all();
+                });
+        }
 
-        $studentSummary = (clone $query)
-            ->selectRaw('student_id, status, count(*) as total')
-            ->groupBy('student_id', 'status')
+        // Summary by individual (student_id or teacher_id)
+        $idColumn = $type . '_id';
+        $individualSummary = (clone $query)
+            ->selectRaw("{$idColumn}, status, count(*) as total")
+            ->whereNotNull($idColumn)
+            ->groupBy($idColumn, 'status')
             ->get()
-            ->groupBy('student_id')
+            ->groupBy($idColumn)
             ->map(function ($rows) {
                 return $rows->pluck('total', 'status')->all();
             });
@@ -851,7 +924,7 @@ class AttendanceController extends Controller
         return response()->json([
             'status_summary' => $statusSummary,
             'class_summary' => $classSummary,
-            'student_summary' => $studentSummary,
+            $type . '_summary' => $individualSummary,
         ]);
     }
 
@@ -887,6 +960,10 @@ class AttendanceController extends Controller
             $query->whereHas('schedule', function ($q) use ($classId): void {
                 $q->where('class_id', $classId);
             });
+        }
+
+        if ($request->filled('student_id')) {
+            $query->where('student_id', $request->integer('student_id'));
         }
 
         $items = $query->orderBy('date')->get()->groupBy('student_id');
@@ -1118,6 +1195,38 @@ class AttendanceController extends Controller
 
         return response()->stream($callback, 200, $headers);
     }
+
+    public function schoolAttendanceHistory(Request $request): JsonResponse
+    {
+        if ($request->user()->user_type !== 'admin' && $request->user()->user_type !== 'waka') {
+            abort(403, 'Unauthorized');
+        }
+
+        $query = Attendance::query()
+            ->with(['student.user:id,name', 'teacher.user:id,name', 'schedule.class:id,name'])
+            ->latest('checked_in_at');
+
+        if ($request->filled('date')) {
+            $query->whereDate('date', $request->date('date'));
+        }
+
+        if ($request->filled('status') && $request->status !== 'Semua') {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('role') && $request->role !== 'Semua') {
+            if ($request->role === 'Guru') {
+                $query->whereIn('attendee_type', ['teacher']);
+            } elseif ($request->role === 'Siswa') {
+                $query->whereIn('attendee_type', ['student']);
+            }
+        }
+
+        $attendances = $query->paginate(20);
+
+        return response()->json($attendances);
+    }
+
 
     private function resolvePerPage(Request $request): ?int
     {

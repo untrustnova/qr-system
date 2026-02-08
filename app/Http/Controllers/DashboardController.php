@@ -15,11 +15,28 @@ class DashboardController extends Controller
 {
     public function adminSummary(): JsonResponse
     {
+        $today = now()->format('Y-m-d');
+        
+        // Get attendance stats for today
+        $attendanceStats = Attendance::whereDate('date', $today)
+            ->selectRaw('status, count(*) as count')
+            ->groupBy('status')
+            ->get()
+            ->pluck('count', 'status');
+
         return response()->json([
             'students_count' => StudentProfile::count(),
             'teachers_count' => TeacherProfile::count(),
             'classes_count' => Classes::count(),
             'majors_count' => Major::count(),
+            'attendance_today' => [
+                'hadir' => $attendanceStats->get('present', 0),
+                'izin' => $attendanceStats->get('izin', 0) + $attendanceStats->get('excused', 0),
+                'sakit' => $attendanceStats->get('sick', 0),
+                'alpha' => $attendanceStats->get('absent', 0),
+                'terlambat' => $attendanceStats->get('late', 0),
+                'pulang' => 0, // Placeholder
+            ]
         ]);
     }
 
@@ -137,6 +154,7 @@ class DashboardController extends Controller
                 'id' => $schedule->id,
                 'subject' => $schedule->subject_name,
                 'class_name' => $schedule->class?->name ?? 'N/A',
+                'class_id' => $schedule->class_id, // Added class_id
                 'time_slot' => $schedule->title ?? 'Jam Ke '.$schedule->id,
                 'start_time' => substr($schedule->start_time, 0, 5),
                 'end_time' => substr($schedule->end_time, 0, 5),

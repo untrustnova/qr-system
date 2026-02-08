@@ -35,8 +35,76 @@ class MobileNotificationController extends Controller
             $notifications = $this->generateTeacherNotifications($user, $date);
         } elseif ($user->user_type === 'student') {
             $notifications = $this->generateStudentNotifications($user, $date);
+        } elseif ($user->user_type === 'admin' || $user->user_type === 'waka') { // Support admin/waka
+             $notifications = $this->generateAdminNotifications($user, $date);
         }
         
+        return $notifications;
+    }
+
+    /**
+     * Generate notifications for Admin/Waka (All School Anomalies)
+     */
+    private function generateAdminNotifications($user, $date): array
+    {
+        $notifications = [];
+
+        // Fetch all non-present attendances for today (Students)
+        $anomalies = Attendance::whereDate('date', $date)
+            ->where('attendee_type', 'student') // Only students for now
+            ->whereIn('status', ['late', 'absent', 'sick', 'excused', 'izin'])
+            ->with(['student.user', 'student.classRoom', 'schedule.subject'])
+            ->latest()
+            ->take(50) // Limit to 50 recent to avoid overload
+            ->get();
+
+        foreach ($anomalies as $attendance) {
+            $studentName = $attendance->student?->user?->name ?? 'Siswa';
+            $className = $attendance->student?->classRoom?->name ?? '-';
+            $scheduleInfo = $attendance->schedule ? 
+                ($attendance->schedule->subject?->name . ' (Jam ke-' . ($attendance->schedule->id) . ')') : 
+                '';
+
+            $type = match ($attendance->status) {
+                'late' => 'terlambat',
+                'sick' => 'sakit',
+                'excused', 'izin' => 'rapor', // Mapping 'izin'/excused to 'rapor' (or allow new type if app supports) - App supports 'sakit', 'alpha', 'terlambat', 'rapor', 'tepat_waktu'
+                'absent' => 'alpha',
+                default => 'other',
+            };
+            
+            // Fix type mapping to match Mobile App NotifikasiSemua.kt expectations
+            // App handle: tepat_waktu, terlambat, alpha, sakit, rapor
+            if ($attendance->status === 'excused' || $attendance->status === 'izin') {
+                $type = 'rapor'; // Using 'rapor' as generic info/izin if 'izin' not explicitly supported in that specific `when` block? 
+                // Wait, NotifikasiSemua.kt (Line 259) doesn't have "izin" case in `when(notif.tipe)`. 
+                // It has `tepat_waktu`, `terlambat`, `alpha`, `sakit`, `rapor`.
+                // So I map `izin` to `rapor` or maybe `sakit`? `rapor` seems ok as "Info".
+            }
+
+            $message = match ($attendance->status) {
+                'late' => "{$studentName} terlambat",
+                'sick' => "{$studentName} sakit",
+                'excused', 'izin' => "{$studentName} izin",
+                'absent' => "{$studentName} alpha",
+                default => "{$studentName} status: {$attendance->status}",
+            };
+
+            $detail = "{$className}";
+            if ($scheduleInfo) {
+                $detail .= " - {$scheduleInfo}";
+            }
+
+            $notifications[] = [
+                'id' => $attendance->id,
+                'type' => $type,
+                'message' => $message,
+                'detail' => $detail, // Contains Class Name and Schedule info
+                'time' => $attendance->created_at->format('H:i'),
+                'created_at' => $attendance->created_at->toIso8601String(),
+            ];
+        }
+
         return $notifications;
     }
     
@@ -102,7 +170,7 @@ class MobileNotificationController extends Controller
         if ($alphaCount > 0) {
             $notifications[] = [
                 'id' => 'alpha_'.now()->timestamp,
-                'type' => 'alpha_siswa',
+                'type' => 'alpha_siswa', // Note: Mobile might not handle this type in Admin view, but OK for Teacher
                 'message' => "Ada {$alphaCount} siswa alpha hari ini",
                 'detail' => 'Perlu tindak lanjut',
                 'time' => now()->format('H:i'),
@@ -156,14 +224,21 @@ class MobileNotificationController extends Controller
         
         foreach ($attendances as $attendance) {
             $type = match ($attendance->status) {
-                'present' => 'hadir',
+                'present' => 'hadir', // NotifikasiSemua might treat 'hadir' as default/other if not 'tepat_waktu'
                 'late' => 'terlambat',
                 'sick' => 'sakit',
-                'excused' => 'izin',
+                'excused' => 'rapor', // Mapping 'izin' to rapor for now to ensure visibility
                 'absent' => 'alpha',
                 default => 'other',
             };
             
+            // Adjust type for exact match if needed
+            if ($attendance->status == 'present' && $attendance->check_in_time <= $attendance->schedule->start_time) {
+                 $type = 'tepat_waktu';
+            } elseif ($attendance->status == 'present') {
+                 $type = 'tepat_waktu'; // Fallback
+            }
+
             $message = match ($attendance->status) {
                 'present' => 'Anda hadir tepat waktu',
                 'late' => 'Anda terlambat',
@@ -186,3 +261,4 @@ class MobileNotificationController extends Controller
         return $notifications;
     }
 }
+

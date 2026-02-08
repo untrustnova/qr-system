@@ -26,6 +26,7 @@ Route::post('/auth/login', [AuthController::class, 'login'])->middleware('thrott
 Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function (): void {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
+    Route::post('/auth/profile', [AuthController::class, 'updateProfile']);
 
     // Mobile-specific endpoints (backward compatible)
     Route::get('/mobile/notifications', [MobileNotificationController::class, 'index']);
@@ -51,7 +52,7 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
     Route::get('/teachers', [TeacherController::class, 'index'])->middleware('role:student,teacher');
     
     // Public classes list (read-only for mobile app)
-    Route::get('/classes', [ClassController::class, 'index'])->middleware('role:student,teacher');
+    Route::get('/classes', [ClassController::class, 'index'])->middleware('role:student,teacher,admin');
     Route::get('/majors', [MajorController::class, 'index'])->middleware('role:student,teacher');
 
     Route::middleware('role:admin')->group(function (): void {
@@ -71,6 +72,7 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
         Route::apiResource('time-slots', TimeSlotController::class);
         Route::post('/wa/send-text', [WhatsAppController::class, 'sendText']);
         Route::post('/wa/send-media', [WhatsAppController::class, 'sendMedia']);
+        Route::get('admin/attendance/history', [AttendanceController::class, 'schoolAttendanceHistory']);
         Route::get('/admin/summary', [DashboardController::class, 'adminSummary']);
         Route::get('/attendance/summary', [DashboardController::class, 'attendanceSummary']);
     });
@@ -104,6 +106,7 @@ Route::middleware(['auth:sanctum', 'activity', 'throttle:api'])->group(function 
         // Allow teachers to view class details (including students) and input manual attendance
         Route::get('/classes/{class}', [ClassController::class, 'show']);
         Route::post('/attendance/manual', [AttendanceController::class, 'manual']);
+        Route::post('/attendance/bulk-manual', [AttendanceController::class, 'bulkManual']);
     });
 
     Route::middleware('role:admin,teacher,student')->group(function (): void {

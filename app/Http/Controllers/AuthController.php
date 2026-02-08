@@ -100,4 +100,36 @@ class AuthController extends Controller
 
         return response()->json(['message' => 'Logged out']);
     }
+
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        
+        $data = $request->validate([
+            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'photo' => ['nullable', 'image', 'max:2048'], // Max 2MB
+        ]);
+
+        if (!empty($data['password'])) {
+            $user->update([
+                'password' => \Illuminate\Support\Facades\Hash::make($data['password']),
+            ]);
+        }
+        
+        if ($request->hasFile('photo')) {
+            $path = $request->file('photo')->store('profile-photos', 'public');
+            
+            // Update photo path in specific profile table
+            if ($user->user_type === 'student' && $user->studentProfile) {
+                $user->studentProfile->update(['photo' => $path]);
+            } elseif ($user->user_type === 'teacher' && $user->teacherProfile) {
+                $user->teacherProfile->update(['photo' => $path]);
+            }
+        }
+
+        return response()->json([
+            'message' => 'Profile updated successfully',
+            'user' => $user->fresh()
+        ]);
+    }
 }

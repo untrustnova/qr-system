@@ -82,20 +82,41 @@ class TeacherStatisticsController extends Controller
             $dayData = $dailyCounts->get($day);
             $status = 'libur'; // Default
 
-            if ($dayData) {
-                // Determine dominant status for the day (simplification)
-                // If any session is present, mark as present? Or show detailed?
-                // Mobile app likely expects a single status code or count.
-                // Let's return just 'hadir' count for the line chart usually.
-                $status = 'hadir'; 
+            if ($dayData && $dayData->isNotEmpty()) {
+                // Determine dominant status for the day
+                // Prioritize: present > late > sick > excused > absent
+                $statuses = $dayData->pluck('status')->map(fn($s) => strtolower($s));
+                
+                if ($statuses->contains('present')) {
+                    $status = 'hadir';
+                } elseif ($statuses->contains('late')) {
+                    $status = 'terlambat';
+                } elseif ($statuses->contains('sick')) {
+                    $status = 'sakit';
+                } elseif ($statuses->contains('excused') || $statuses->contains('izin')) {
+                    $status = 'izin';
+                } elseif ($statuses->contains('absent')) {
+                    $status = 'alpha';
+                } else {
+                    $status = 'hadir'; // Fallback if data exists
+                }
+            } else {
+                // Check if it's a weekend (Saturday/Sunday)
+                $date = Carbon::createFromDate($year, $month, $day);
+                if ($date->isWeekend()) {
+                    $status = 'libur';
+                } else {
+                    $status = 'alpha'; // Or 'belum absen' if today/future
+                    if ($date->isFuture()) {
+                        $status = 'future';
+                    }
+                }
             }
-            
-            // For simple line chart (e.g. 1=Hadir, 0=Absen)
-            $value = $dayData ? 1 : 0; 
 
+            // Mobile expects: { day: 1, status: "hadir" }
             $data[] = [
                 'day' => $day,
-                'value' => $value, // 1 for attended, 0 for not
+                'status' => $status,
             ];
         }
 
